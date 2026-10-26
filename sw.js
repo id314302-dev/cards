@@ -1,7 +1,7 @@
 // Сетевой запрос в приоритете (чтобы подтягивать новую версию), при отсутствии сети — кэш.
-const CACHE = "cards-v3";
+const CACHE = "cards-v4";
 const FILES = ["./", "index.html", "cards.js", "manifest.json", "icon-v2-192.png", "icon-v2-512.png",
-  ...Array.from({ length: 20 }, (_, i) => [`audio/${i + 1}.mp3`, `audio/${i + 1}-slow.mp3`]).flat()];
+  ...Array.from({ length: 20 }, (_, i) => `audio/${i + 1}.mp3`)];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)));

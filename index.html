@@ -170,9 +170,14 @@ let audio = null;
 // Готовая озвучка из audio/; если файла нет — голос телефона
 function play(c, slow) {
   try { speechSynthesis.cancel(); audio && audio.pause(); } catch {}
-  fetch(`audio/${c.id}${slow ? "-slow" : ""}.mp3`)
+  fetch(`audio/${c.id}.mp3`)
     .then(r => { if (!r.ok) throw 0; return r.blob(); })
-    .then(b => { audio = new Audio(URL.createObjectURL(b)); return audio.play(); })
+    .then(b => {
+      audio = new Audio(URL.createObjectURL(b));
+      audio.preservesPitch = true;
+      audio.playbackRate = slow ? 0.75 : 1;   // «Медленно» — та же запись, замедленная без смены тона
+      return audio.play();
+    })
     .catch(() => speak(c.en, slow));
 }
 
