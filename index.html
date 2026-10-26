@@ -11,23 +11,23 @@
   :root { --bg:#2b2b2b; --card:#363636; --text:#fff; --head:#6cc4ff; --border:#bdbdbd; --ok:#3f8f5a; --no:#a04848; }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,sans-serif;
-         min-height:100dvh; display:flex; flex-direction:column; padding:16px; padding-bottom:calc(16px + env(safe-area-inset-bottom)); }
+         height:100dvh; display:flex; flex-direction:column; padding:16px; padding-bottom:calc(16px + env(safe-area-inset-bottom)); }
   h1 { color:var(--head); font-size:1.1rem; margin:0 0 4px; }
   #stats { font-size:.9rem; opacity:.8; margin-bottom:12px; }
-  #stage { flex:1; display:flex; flex-direction:column; justify-content:center; max-width:480px; width:100%; margin:0 auto; }
-  .card { background:var(--card); border:1px solid var(--border); border-radius:16px; min-height:55dvh;
+  #stage { flex:1; min-height:0; display:flex; flex-direction:column; justify-content:center; max-width:480px; width:100%; margin:0 auto; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:16px; flex:1; min-height:0; overflow:auto;
           display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px; cursor:pointer; user-select:none; }
-  .pic { font-size:7rem; line-height:1.1; } .pic img { max-width:100%; max-height:35dvh; border-radius:12px; }
+  .pic { font-size:7rem; line-height:1.1; } .pic img { max-width:100%; max-height:28dvh; max-width:100%; object-fit:contain; border-radius:12px; }
   .ru { font-size:1.5rem; margin-top:16px; }
   .en { font-size:1.6rem; margin-top:16px; color:var(--head); }
   .ipa { font-size:1.1rem; margin-top:6px; color:var(--border); }
   .hint { opacity:.6; font-size:.85rem; margin-top:14px; }
-  .row { display:flex; gap:10px; margin-top:12px; }
+  .row { flex:none; display:flex; gap:10px; margin-top:12px; }
   button { flex:1; padding:16px; font-size:1.05rem; color:#fff; background:var(--card); border:1px solid var(--border); border-radius:12px; }
   button.ok { background:var(--ok); } button.no { background:var(--no); }
   .small { flex:0; padding:10px 14px; font-size:.85rem; }
   .done { text-align:center; } .done h2 { color:var(--head); }
-  footer { max-width:480px; width:100%; margin:12px auto 0; display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+  footer { flex:none; max-width:480px; width:100%; margin:12px auto 0; display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
 </style>
 </head>
 <body>
