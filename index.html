@@ -174,7 +174,7 @@ function shuffle(a) {
   return a;
 }
 
-function drillStart(st, pos = 0, autoplay = true) {
+function drillStart(st, pos = 0, autoplay = false) {   // звук сам не включается: только после «Дальше»
   drill.stage = st; drill.pos = pos; drill.shown = false; drill.finished = false;
   drill.order = st === "chain" ? D.cards.slice() : shuffle(D.cards);
   drillRender(autoplay);
@@ -209,8 +209,8 @@ function drillRender(autoplay) {
   if (!drill.shown) {
     stage.innerHTML = head + `<div class="card" id="card"><div class="listen">🎧</div>
       <div class="ru">Слушайте и выполняйте действие</div>
-      <div class="hint">Потом нажмите «Показать», чтобы проверить себя</div>
-      <div class="snd"><button class="small" id="p1">🔊 Ещё раз</button><button class="small" id="p2">🐢 Медленно</button></div></div>
+      <div class="hint">Нажмите «Послушать». Сделайте действие, потом «Показать фразу»</div>
+      <div class="snd"><button class="small" id="p1">🔊 Послушать</button><button class="small" id="p2">🐢 Медленно</button></div></div>
       <div class="row"><button class="ok" id="show">Показать фразу</button></div>`;
     $("#card").onclick = () => play(c, false);
     $("#show").onclick = () => { drill.shown = true; drillRender(false); };
@@ -243,7 +243,7 @@ function refresh(first) {
   if (!D.drill) mode = "cards";   // дрил — только для колод с действиями из урока
   saveJson(PREF, { deck: D.id, mode });
   updateBar();
-  if (mode === "drill") drillStart("chain", 0, !first);   // при открытии приложения звук сам не включается
+  if (mode === "drill") drillStart("chain");
   else { current = null; next(); }
 }
 
