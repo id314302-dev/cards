@@ -1,0 +1,23 @@
+// id — номер карточки; картинка берётся из img/<id>.png, иначе показывается emoji
+const CARDS = [
+  { id: 1,  emoji: "📱", ru: "Возьми телефон",                en: "Pick up the phone." },
+  { id: 2,  emoji: "☕", ru: "Поставь чашку на стол",         en: "Put the cup down on the table." },
+  { id: 3,  emoji: "📖", ru: "Отодвинь книгу в сторону",      en: "Move the book aside." },
+  { id: 4,  emoji: "📦", ru: "Передвинь коробку сюда",        en: "Move the box over here." },
+  { id: 5,  emoji: "🔑", ru: "Положи ключ в карман",          en: "Put the key in your pocket." },
+  { id: 6,  emoji: "👖", ru: "Достань ключ из кармана",       en: "Take the key out of your pocket." },
+  { id: 7,  emoji: "🖊️", ru: "Дай мне ручку",                 en: "Give me the pen." },
+  { id: 8,  emoji: "⬆️", ru: "Подними коробку",               en: "Lift the box up." },
+  { id: 9,  emoji: "⬇️", ru: "Медленно опусти коробку",       en: "Lower the box slowly." },
+  { id: 10, emoji: "🍼", ru: "Слегка наклони бутылку",        en: "Tilt the bottle slightly." },
+  { id: 11, emoji: "🍾", ru: "Держи бутылку вертикально",     en: "Keep the bottle upright." },
+  { id: 12, emoji: "🪑", ru: "Придвинь стул ближе",           en: "Bring the chair closer." },
+  { id: 13, emoji: "💡", ru: "Убери лампу подальше",          en: "Move the lamp far away." },
+  { id: 14, emoji: "🔄", ru: "Переверни телефон другой стороной", en: "Turn the phone around." },
+  { id: 15, emoji: "🥤", ru: "Хорошенько встряхни бутылку",   en: "Give the bottle a good shake." },
+  { id: 16, emoji: "🥛", ru: "Осторожно. Не урони стакан",    en: "Be careful. Don't drop the glass." },
+  { id: 17, emoji: "💻", ru: "Неси ноутбук осторожно",        en: "Carry the laptop carefully." },
+  { id: 18, emoji: "🍽️", ru: "Аккуратно поставь тарелку",     en: "Set the plate down gently." },
+  { id: 19, emoji: "🙃", ru: "Переверни чашку вверх дном",    en: "Turn the cup upside down." },
+  { id: 20, emoji: "🗝️", ru: "Оставь ключи там",              en: "Leave the keys there." },
+];

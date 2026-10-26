@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2b2b2b">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<title>Карточки English</title>
+<style>
+  :root { --bg:#2b2b2b; --card:#363636; --text:#fff; --head:#6cc4ff; --border:#bdbdbd; --ok:#3f8f5a; --no:#a04848; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,sans-serif;
+         min-height:100dvh; display:flex; flex-direction:column; padding:16px; padding-bottom:calc(16px + env(safe-area-inset-bottom)); }
+  h1 { color:var(--head); font-size:1.1rem; margin:0 0 4px; }
+  #stats { font-size:.9rem; opacity:.8; margin-bottom:12px; }
+  #stage { flex:1; display:flex; flex-direction:column; justify-content:center; max-width:480px; width:100%; margin:0 auto; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:16px; min-height:55dvh;
+          display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px; cursor:pointer; user-select:none; }
+  .pic { font-size:7rem; line-height:1.1; } .pic img { max-width:100%; max-height:35dvh; border-radius:12px; }
+  .ru { font-size:1.5rem; margin-top:16px; }
+  .en { font-size:1.6rem; margin-top:16px; color:var(--head); }
+  .hint { opacity:.6; font-size:.85rem; margin-top:14px; }
+  .row { display:flex; gap:10px; margin-top:12px; }
+  button { flex:1; padding:16px; font-size:1.05rem; color:#fff; background:var(--card); border:1px solid var(--border); border-radius:12px; }
+  button.ok { background:var(--ok); } button.no { background:var(--no); }
+  .small { flex:0; padding:10px 14px; font-size:.85rem; }
+  .done { text-align:center; } .done h2 { color:var(--head); }
+  footer { max-width:480px; width:100%; margin:12px auto 0; display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+</style>
+</head>
+<body>
+<h1>Карточки English</h1>
+<div id="stats"></div>
+<div id="stage"></div>
+<footer>
+  <button class="small" id="save">Сохранить прогресс</button>
+  <button class="small" id="load">Загрузить прогресс</button>
+  <input type="file" id="file" accept=".json" hidden>
+</footer>
+<script src="cards.js"></script>
+<script>
+const KEY = "cards-progress-v1";
+const DAY = 86400000;
+const INTERVALS = [0, 1, 3, 7, 14, 30]; // дни по коробкам 0..5
+
+function loadState() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } }
+function saveState() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} }
+let state = loadState();   // { id: { box, due } }
+
+const $ = s => document.querySelector(s);
+const stage = $("#stage");
+let current = null, flipped = false;
+
+function dueCards() {
+  const now = Date.now();
+  return CARDS.filter(c => !state[c.id] || state[c.id].due <= now)
+              .sort((a, b) => ((state[a.id]?.due ?? 0) - (state[b.id]?.due ?? 0)) || (a.id - b.id));
+}
+
+function stats() {
+  const learned = CARDS.filter(c => (state[c.id]?.box ?? 0) >= 3).length;
+  $("#stats").textContent = `На сегодня: ${dueCards().length} · Выучено: ${learned} из ${CARDS.length}`;
+}
+
+function picHtml(c) {
+  return `<div class="pic"><img src="img/${c.id}.png" alt="" onerror="this.replaceWith(document.createTextNode('${c.emoji}'))"></div>`;
+}
+
+function next() {
+  stats();
+  const due = dueCards();
+  if (!due.length) {
+    current = null;
+    stage.innerHTML = `<div class="done"><h2>На сегодня всё 🎉</h2><p>Возвращайтесь завтра.</p></div>`;
+    return;
+  }
+  // не показывать одну и ту же карточку подряд, если есть другие
+  current = due.find(c => c !== current) || due[0];
+  flipped = false;
+  render();
+}
+
+function render() {
+  const c = current;
+  if (!flipped) {
+    stage.innerHTML = `<div class="card" id="card">${picHtml(c)}<div class="ru">${c.ru}</div>
+      <div class="hint">Вспомните вслух, потом нажмите на карточку</div></div>`;
+    $("#card").onclick = () => { flipped = true; render(); speak(c.en); };
+  } else {
+    stage.innerHTML = `<div class="card" id="card">${picHtml(c)}<div class="ru">${c.ru}</div>
+      <div class="en">${c.en}</div><div class="hint">Нажмите, чтобы послушать ещё раз</div></div>
+      <div class="row"><button class="no" id="no">Не знал</button><button class="ok" id="ok">Знал</button></div>`;
+    $("#card").onclick = () => speak(c.en);
+    $("#ok").onclick = () => answer(true);
+    $("#no").onclick = () => answer(false);
+  }
+}
+
+function answer(known) {
+  const s = state[current.id] || { box: 0, due: 0 };
+  s.box = known ? Math.min(s.box + 1, INTERVALS.length - 1) : 0;
+  // «не знал» вернётся в этой же сессии: due = сейчас, но не подряд
+  s.due = known ? Date.now() + INTERVALS[s.box] * DAY : Date.now();
+  state[current.id] = s;
+  saveState();
+  next();
+}
+
+function speak(text) {
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "en-US";
+    speechSynthesis.speak(u);
+  } catch {}
+}
+
+$("#save").onclick = () => {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(state)], { type: "application/json" }));
+  a.download = "cards-progress.json";
+  a.click();
+};
+$("#load").onclick = () => $("#file").click();
+$("#file").onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try { state = JSON.parse(await f.text()); saveState(); next(); } catch { alert("Не удалось прочитать файл"); }
+};
+
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+next();
+</script>
+</body>
+</html>
