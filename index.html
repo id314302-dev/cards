@@ -17,7 +17,8 @@
   #stage { flex:1; min-height:0; display:flex; flex-direction:column; justify-content:center; max-width:480px; width:100%; margin:0 auto; }
   .card { background:var(--card); border:1px solid var(--border); border-radius:16px; flex:1; min-height:0; overflow:auto;
           display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:12px; cursor:pointer; user-select:none; }
-  .pic { font-size:5rem; line-height:1.1; } .pic img { max-width:100%; max-height:22dvh; max-width:100%; object-fit:contain; border-radius:12px; }
+  .pic { font-size:5rem; line-height:1.1; } .pic img { max-width:100%; max-height:22dvh; object-fit:contain; border-radius:12px; }
+  .listen { font-size:4.5rem; line-height:1.1; }
   .ru { font-size:1.35rem; margin-top:10px; }
   .en { font-size:1.4rem; margin-top:10px; color:var(--head); }
   .ipa { font-size:1rem; margin-top:4px; color:var(--border); }
@@ -28,11 +29,15 @@
   .row { flex:none; display:flex; gap:10px; margin-top:12px; }
   button { flex:1; padding:16px; font-size:1.05rem; color:#fff; background:var(--card); border:1px solid var(--border); border-radius:12px; }
   button.ok { background:var(--ok); } button.no { background:var(--no); }
-  .small { flex:0; padding:10px 14px; font-size:.85rem; }
+  button.on { border-color:var(--head); color:var(--head); }
+  .small { flex:0; padding:10px 14px; font-size:.85rem; white-space:nowrap; }
+  .back { flex:0; padding:16px 22px; }
   .done { text-align:center; } .done h2 { color:var(--head); }
   .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+  .bar { display:flex; gap:8px; margin-bottom:8px; }
+  select { flex:1; min-width:0; padding:10px; font-size:.9rem; color:#fff; background:var(--card); border:1px solid var(--border); border-radius:12px; }
   .nav { flex:none; display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
-  .nav button { flex:none; padding:8px 22px; font-size:1.2rem; } .nav span { opacity:.8; }
+  .nav button { flex:none; padding:8px 22px; font-size:1.2rem; } .nav button.small { padding:10px 14px; font-size:.85rem; } .nav span { opacity:.8; }
   #list { position:fixed; inset:0; z-index:10; background:var(--bg); overflow:auto; padding:16px; display:none; }
   #list.open { display:block; } #list .wrap { max-width:480px; margin:0 auto; }
   .item { display:flex; gap:12px; align-items:center; padding:10px; margin-bottom:8px; background:var(--card);
@@ -44,6 +49,11 @@
 </head>
 <body>
 <div class="top"><h1>Карточки English</h1><button class="small" id="open-list">Список</button></div>
+<div class="bar">
+  <select id="deck" aria-label="Колода"></select>
+  <button class="small" id="m-cards">Карточки</button>
+  <button class="small" id="m-drill">Дрил</button>
+</div>
 <div id="stats"></div>
 <div id="stage"></div>
 <footer>
@@ -54,31 +64,39 @@
 <div id="list"><div class="wrap"><div class="top"><h1>Все карточки</h1><button class="small" id="close-list">Закрыть</button></div><div id="items"></div></div></div>
 <script src="cards.js"></script>
 <script>
-const KEY = "cards-progress-v1";
+const KEY = "cards-progress-v1";   // прогресс интервального повторения
+const PREF = "cards-prefs-v1";     // выбранная колода и режим
 const DAY = 86400000;
 const INTERVALS = [0, 1, 3, 7, 14, 30]; // дни по коробкам 0..5
 
-function loadState() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } }
-function saveState() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} }
-let state = loadState();   // { id: { box, due } }
+function loadJson(key) { try { return JSON.parse(localStorage.getItem(key)) || {}; } catch { return {}; } }
+function saveJson(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } catch {} }
+let state = loadJson(KEY);   // { ключ карточки: { box, due } }
+const prefs = loadJson(PREF);
 
 const $ = s => document.querySelector(s);
 const stage = $("#stage");
+let D = DECKS.find(d => d.id === prefs.deck) || DECKS[0];   // текущая колода
+let mode = prefs.mode === "drill" ? "drill" : "cards";
 let current = null, flipped = false;
+
+// У первой колоды ключи прогресса остались прежними (просто номер), у остальных — «колода:номер»
+const k = c => D.id === "core" ? String(c.id) : `${D.id}:${c.id}`;
+const imgSrc = c => `img/${D.dir}${c.id}.jpg`;
+const thumb = c => `<img src="${imgSrc(c)}" alt="" onerror="this.replaceWith(document.createTextNode('${c.emoji}'))">`;
+const picHtml = c => `<div class="pic">${thumb(c)}</div>`;
+
+// ---------- Режим «Карточки» (интервальное повторение) ----------
 
 function dueCards() {
   const now = Date.now();
-  return CARDS.filter(c => !state[c.id] || state[c.id].due <= now)
-              .sort((a, b) => ((state[a.id]?.due ?? 0) - (state[b.id]?.due ?? 0)) || (a.id - b.id));
+  return D.cards.filter(c => !state[k(c)] || state[k(c)].due <= now)
+                .sort((a, b) => ((state[k(a)]?.due ?? 0) - (state[k(b)]?.due ?? 0)) || (a.id - b.id));
 }
 
 function stats() {
-  const learned = CARDS.filter(c => (state[c.id]?.box ?? 0) >= 3).length;
-  $("#stats").textContent = `На сегодня: ${dueCards().length} · Выучено: ${learned} из ${CARDS.length}`;
-}
-
-function picHtml(c) {
-  return `<div class="pic"><img src="img/${c.id}.jpg" alt="" onerror="this.replaceWith(document.createTextNode('${c.emoji}'))"></div>`;
+  const learned = D.cards.filter(c => (state[k(c)]?.box ?? 0) >= 3).length;
+  $("#stats").textContent = `На сегодня: ${dueCards().length} · Выучено: ${learned} из ${D.cards.length}`;
 }
 
 function next() {
@@ -86,7 +104,7 @@ function next() {
   const due = dueCards();
   if (!due.length) {
     current = null;
-    stage.innerHTML = `<div class="done"><h2>На сегодня всё 🎉</h2><p>Возвращайтесь завтра.</p></div>`;
+    stage.innerHTML = `<div class="done"><h2>На сегодня всё 🎉</h2><p>Возвращайтесь завтра или попробуйте режим «Дрил».</p></div>`;
     return;
   }
   // не показывать одну и ту же карточку подряд, если есть другие
@@ -124,22 +142,119 @@ function stressHtml(c) {
 }
 
 function navHtml() {
-  return `<div class="nav"><button id="prev">←</button><span>${CARDS.indexOf(current) + 1} / ${CARDS.length}</span><button id="next">→</button></div>`;
+  return `<div class="nav"><button id="prev">←</button><span>${D.cards.indexOf(current) + 1} / ${D.cards.length}</span><button id="next">→</button></div>`;
 }
 
 function go(d) {
-  const i = CARDS.indexOf(current);
-  current = CARDS[(i + d + CARDS.length) % CARDS.length];
+  const i = D.cards.indexOf(current);
+  current = D.cards[(i + d + D.cards.length) % D.cards.length];
   flipped = false;
   render();
 }
 
+function answer(known) {
+  const s = state[k(current)] || { box: 0, due: 0 };
+  s.box = known ? Math.min(s.box + 1, INTERVALS.length - 1) : 0;
+  // «не знал» вернётся в этой же сессии: due = сейчас, но не подряд
+  s.due = known ? Date.now() + INTERVALS[s.box] * DAY : Date.now();
+  state[k(current)] = s;
+  saveJson(KEY, state);
+  next();
+}
+
+// ---------- Режим «Дрил»: слушаю команду, делаю действие, проверяю себя ----------
+// Этап 1 «Цепочка» — фразы по порядку урока. Этап 2 «Вразнобой» — тот же набор вперемешку.
+// Прогресс интервального повторения в дриле не меняется.
+
+const drill = { stage: "chain", order: [], pos: 0, shown: false, finished: false };
+
+function shuffle(a) {
+  a = a.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+
+function drillStart(st, pos = 0, autoplay = true) {
+  drill.stage = st; drill.pos = pos; drill.shown = false; drill.finished = false;
+  drill.order = st === "chain" ? D.cards.slice() : shuffle(D.cards);
+  drillRender(autoplay);
+}
+
+function drillNext() {
+  drill.pos++; drill.shown = false;
+  if (drill.pos >= drill.order.length) {
+    if (drill.stage === "chain") { drill.finished = true; drill.pos = drill.order.length - 1; drillRender(false); return; }
+    // новый круг вразнобой: первая карточка не должна совпасть с последней предыдущего круга
+    const last = drill.order[drill.order.length - 1];
+    const o = shuffle(D.cards);
+    if (o.length > 1 && o[0] === last) o.push(o.shift());
+    drill.order = o; drill.pos = 0;
+  }
+  drillRender(true);
+}
+
+function drillRender(autoplay) {
+  const chain = drill.stage === "chain";
+  $("#stats").textContent = `Дрил · ${chain ? "цепочка" : "вразнобой"}`;
+  if (drill.finished) {
+    stage.innerHTML = `<div class="done"><h2>Цепочка пройдена 🎉</h2><p>Теперь разорвите её: те же фразы вперемешку.</p>
+      <div class="row"><button id="again">Ещё раз по цепочке</button><button class="ok" id="rand">Вразнобой</button></div></div>`;
+    $("#again").onclick = () => drillStart("chain");
+    $("#rand").onclick = () => drillStart("random");
+    return;
+  }
+  const c = drill.order[drill.pos];
+  const label = chain ? `Цепочка · ${drill.pos + 1} / ${drill.order.length}` : `Вразнобой · ${drill.pos + 1} / ${drill.order.length}`;
+  const head = `<div class="nav"><span>${label}</span><button class="small" id="dswitch">${chain ? "Вразнобой →" : "← Цепочка"}</button></div>`;
+  if (!drill.shown) {
+    stage.innerHTML = head + `<div class="card" id="card"><div class="listen">🎧</div>
+      <div class="ru">Слушайте и выполняйте действие</div>
+      <div class="hint">Потом нажмите «Показать», чтобы проверить себя</div>
+      <div class="snd"><button class="small" id="p1">🔊 Ещё раз</button><button class="small" id="p2">🐢 Медленно</button></div></div>
+      <div class="row"><button class="ok" id="show">Показать фразу</button></div>`;
+    $("#card").onclick = () => play(c, false);
+    $("#show").onclick = () => { drill.shown = true; drillRender(false); };
+  } else {
+    stage.innerHTML = head + `<div class="card" id="card">${picHtml(c)}<div class="ru">${c.ru}</div>
+      <div class="en">${stressHtml(c)}</div><div class="ipa">${c.ipa}</div>
+      <div class="snd"><button class="small" id="p1">🔊 Обычно</button><button class="small" id="p2">🐢 Медленно</button></div></div>
+      <div class="row">${chain && drill.pos > 0 ? '<button class="back" id="dprev">←</button>' : ""}<button class="ok" id="dnext">Дальше →</button></div>`;
+    $("#card").onclick = () => play(c, false);
+    $("#dnext").onclick = drillNext;
+    if ($("#dprev")) $("#dprev").onclick = () => { drill.pos--; drill.shown = false; drillRender(true); };
+  }
+  $("#p1").onclick = e => { e.stopPropagation(); play(c, false); };
+  $("#p2").onclick = e => { e.stopPropagation(); play(c, true); };
+  $("#dswitch").onclick = () => drillStart(chain ? "random" : "chain");
+  if (autoplay) play(c, false);
+}
+
+// ---------- Колоды, режимы, список ----------
+
+function updateBar() {
+  $("#deck").innerHTML = DECKS.map(d => `<option value="${d.id}">${d.name} (${d.cards.length})</option>`).join("");
+  $("#deck").value = D.id;
+  $("#m-cards").classList.toggle("on", mode === "cards");
+  $("#m-drill").classList.toggle("on", mode === "drill");
+}
+
+function refresh(first) {
+  saveJson(PREF, { deck: D.id, mode });
+  updateBar();
+  if (mode === "drill") drillStart("chain", 0, !first);   // при открытии приложения звук сам не включается
+  else { current = null; next(); }
+}
+
+$("#deck").onchange = e => { D = DECKS.find(d => d.id === e.target.value); refresh(); };
+$("#m-cards").onclick = () => { mode = "cards"; refresh(); };
+$("#m-drill").onclick = () => { mode = "drill"; refresh(); };
+
 function openList() {
   const now = Date.now();
-  $("#items").innerHTML = CARDS.map(c => {
-    const s = state[c.id];
-    const status = !s ? "новая" : s.due <= now ? "пора повторить" : `повторить через ${Math.ceil((s.due - now) / DAY)} дн.`;
-    return `<div class="item" data-id="${c.id}"><div class="th"><img src="img/${c.id}.jpg" alt="" onerror="this.replaceWith(document.createTextNode('${c.emoji}'))"></div>
+  $("#items").innerHTML = D.cards.map(c => {
+    const s = state[k(c)];
+    const status = mode === "drill" ? "" : !s ? "новая" : s.due <= now ? "пора повторить" : `повторить через ${Math.ceil((s.due - now) / DAY)} дн.`;
+    return `<div class="item" data-id="${c.id}"><div class="th">${thumb(c)}</div>
       <div class="t">${c.id}. ${c.ru}<small>${status}</small></div></div>`;
   }).join("");
   $("#list").classList.add("open");
@@ -149,28 +264,20 @@ $("#open-list").onclick = openList;
 $("#close-list").onclick = () => $("#list").classList.remove("open");
 $("#items").onclick = e => {
   const it = e.target.closest(".item"); if (!it) return;
-  current = CARDS.find(c => c.id === +it.dataset.id);
-  flipped = false;
+  const c = D.cards.find(x => x.id === +it.dataset.id);
   $("#list").classList.remove("open");
-  render();
+  if (mode === "drill") { drillStart("chain", D.cards.indexOf(c)); return; }
+  current = c; flipped = false; render();
 };
 
-function answer(known) {
-  const s = state[current.id] || { box: 0, due: 0 };
-  s.box = known ? Math.min(s.box + 1, INTERVALS.length - 1) : 0;
-  // «не знал» вернётся в этой же сессии: due = сейчас, но не подряд
-  s.due = known ? Date.now() + INTERVALS[s.box] * DAY : Date.now();
-  state[current.id] = s;
-  saveState();
-  next();
-}
+// ---------- Звук ----------
 
 let audio = null;
 
 // Готовая озвучка из audio/; если файла нет — голос телефона
 function play(c, slow) {
   try { speechSynthesis.cancel(); audio && audio.pause(); } catch {}
-  fetch(`audio/${c.id}.mp3`)
+  fetch(`audio/${D.dir}${c.id}.mp3`)
     .then(r => { if (!r.ok) throw 0; return r.blob(); })
     .then(b => {
       audio = new Audio(URL.createObjectURL(b));
@@ -190,6 +297,8 @@ function speak(text, slow) {
   } catch {}
 }
 
+// ---------- Прогресс в файл ----------
+
 $("#save").onclick = () => {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([JSON.stringify(state)], { type: "application/json" }));
@@ -199,11 +308,11 @@ $("#save").onclick = () => {
 $("#load").onclick = () => $("#file").click();
 $("#file").onchange = async e => {
   const f = e.target.files[0]; if (!f) return;
-  try { state = JSON.parse(await f.text()); saveState(); next(); } catch { alert("Не удалось прочитать файл"); }
+  try { state = JSON.parse(await f.text()); saveJson(KEY, state); refresh(); } catch { alert("Не удалось прочитать файл"); }
 };
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
-next();
+refresh(true);
 </script>
 </body>
 </html>
