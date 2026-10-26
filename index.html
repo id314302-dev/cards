@@ -236,11 +236,9 @@ function updateBar() {
   $("#deck").value = D.id;
   $("#m-cards").classList.toggle("on", mode === "cards");
   $("#m-drill").classList.toggle("on", mode === "drill");
-  $("#m-cards").style.display = $("#m-drill").style.display = D.drill ? "" : "none";   // режимы только там, где есть дрил
 }
 
 function refresh(first) {
-  if (!D.drill) mode = "cards";   // дрил — только для колод с действиями из урока
   saveJson(PREF, { deck: D.id, mode });
   updateBar();
   if (mode === "drill") drillStart("chain");
