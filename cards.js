@@ -1,4 +1,4 @@
-// Колоды. dir — подпапка в img/ и audio/ (у первой колоды файлы лежат в корне, как раньше).
+// Колоды. drill: true — для колоды доступен режим «Дрил» (только действия из урока). dir — подпапка в img/ и audio/ (у первой колоды файлы лежат в корне, как раньше).
 // В карточке id — номер внутри колоды; картинка img/<dir><id>.jpg, озвучка audio/<dir><id>.mp3, иначе emoji.
 const DECKS = [
   { id: "core", name: "Основа: 20 действий", dir: "", cards: [
@@ -23,7 +23,7 @@ const DECKS = [
     { id: 19, emoji: "🙃", ru: "Переверни чашку вверх дном",    en: "Turn the cup upside down.", ipa: "[ˈtɝn ðə ˈkʌp ˈʌpsaɪd ˈdaʊn]" },
     { id: 20, emoji: "🗝️", ru: "Оставь ключи там",              en: "Leave the keys there.", ipa: "[ˈliv ðə ˈkiz ˈðɛr]" },
   ] },
-  { id: "cup", name: "Чашка: дрил", dir: "cup/", cards: [
+  { id: "cup", name: "Чашка: дрил", dir: "cup/", drill: true, cards: [
     { id: 1, emoji: "☕", ru: "Возьми чашку", en: "Pick up the cup.", ipa: "[ˈpɪk ʌp ðə ˈkʌp]" },
     { id: 2, emoji: "🍽️", ru: "Поставь чашку на стол", en: "Put the cup down on the table.", ipa: "[ˈpʊt ðə ˈkʌp ˈdaʊn ɑn ðə ˈteɪbəl]" },
     { id: 3, emoji: "🔄", ru: "Поверни чашку", en: "Turn the cup around.", ipa: "[ˈtɝn ðə ˈkʌp əˈraʊnd]" },
