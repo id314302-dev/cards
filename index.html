@@ -249,7 +249,7 @@ function drillRender(autoplay) {
 
 // ---------- Режим «Тает»: текст кусками по порядку, слова постепенно скрываются ----------
 // Уровни: 0 весь текст · 1 нет каждого 3-го слова · 2 нет каждого 2-го · 3 только первые буквы · 4 только подсказка по-русски.
-// Уровень общий для всех кусков: поставили 3 и прошли весь скрипт подряд.
+// На новом куске уровень сбрасывается на 0.
 
 const LEVELS = ["весь текст", "скрыто каждое 3-е слово", "скрыто каждое 2-е слово", "только первые буквы", "только подсказка"];
 const fade = { pos: 0, peek: false };
@@ -266,7 +266,8 @@ function maskText(text, lv) {
   });
 }
 
-function fadeStart(pos) { fade.pos = pos; fade.peek = false; fadeRender(); }
+// Каждый новый кусок начинается с уровня 0 (весь текст); дальше скрываете сами
+function fadeStart(pos) { fade.pos = pos; fade.peek = false; level = 0; saveJson(PREF, { deck: D.id, mode, level }); fadeRender(); }
 
 function fadeRender() {
   const c = D.cards[fade.pos];
