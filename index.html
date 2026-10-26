@@ -21,6 +21,7 @@
   .ru { font-size:1.35rem; margin-top:10px; }
   .en { font-size:1.4rem; margin-top:10px; color:var(--head); }
   .ipa { font-size:1rem; margin-top:4px; color:var(--border); }
+  .snd { display:flex; gap:8px; margin-top:10px; }
   .hint { opacity:.6; font-size:.85rem; margin-top:8px; }
   .row { flex:none; display:flex; gap:10px; margin-top:12px; }
   button { flex:1; padding:16px; font-size:1.05rem; color:#fff; background:var(--card); border:1px solid var(--border); border-radius:12px; }
@@ -97,12 +98,15 @@ function render() {
   if (!flipped) {
     stage.innerHTML = navHtml() + `<div class="card" id="card">${picHtml(c)}<div class="ru">${c.ru}</div>
       <div class="hint">Вспомните вслух, потом нажмите на карточку</div></div>`;
-    $("#card").onclick = () => { flipped = true; render(); speak(c.en); };
+    $("#card").onclick = () => { flipped = true; render(); play(c, false); };
   } else {
     stage.innerHTML = navHtml() + `<div class="card" id="card">${picHtml(c)}<div class="ru">${c.ru}</div>
-      <div class="en">${c.en}</div><div class="ipa">${c.ipa}</div><div class="hint">Нажмите, чтобы послушать ещё раз</div></div>
+      <div class="en">${c.en}</div><div class="ipa">${c.ipa}</div>
+      <div class="snd"><button class="small" id="p1">🔊 Обычно</button><button class="small" id="p2">🐢 Медленно</button></div></div>
       <div class="row"><button class="no" id="no">Не знал</button><button class="ok" id="ok">Знал</button></div>`;
-    $("#card").onclick = () => speak(c.en);
+    $("#card").onclick = () => play(c, false);
+    $("#p1").onclick = e => { e.stopPropagation(); play(c, false); };
+    $("#p2").onclick = e => { e.stopPropagation(); play(c, true); };
     $("#ok").onclick = () => answer(true);
     $("#no").onclick = () => answer(false);
   }
@@ -152,11 +156,22 @@ function answer(known) {
   next();
 }
 
-function speak(text) {
+let audio = null;
+
+// Готовая озвучка из audio/; если файла нет — голос телефона
+function play(c, slow) {
+  try { speechSynthesis.cancel(); audio && audio.pause(); } catch {}
+  fetch(`audio/${c.id}${slow ? "-slow" : ""}.mp3`)
+    .then(r => { if (!r.ok) throw 0; return r.blob(); })
+    .then(b => { audio = new Audio(URL.createObjectURL(b)); return audio.play(); })
+    .catch(() => speak(c.en, slow));
+}
+
+function speak(text, slow) {
   try {
-    speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = "en-US";
+    u.rate = slow ? 0.6 : 0.8;
     speechSynthesis.speak(u);
   } catch {}
 }
