@@ -1,4 +1,4 @@
-// id — номер карточки; картинка берётся из img/<id>.png, иначе показывается emoji
+// id — номер карточки; картинка берётся из img/<id>.jpg, иначе показывается emoji
 const CARDS = [
   { id: 1,  emoji: "📱", ru: "Возьми телефон",                en: "Pick up the phone." },
   { id: 2,  emoji: "☕", ru: "Поставь чашку на стол",         en: "Put the cup down on the table." },
