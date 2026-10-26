@@ -20,6 +20,7 @@
   .pic { font-size:7rem; line-height:1.1; } .pic img { max-width:100%; max-height:35dvh; border-radius:12px; }
   .ru { font-size:1.5rem; margin-top:16px; }
   .en { font-size:1.6rem; margin-top:16px; color:var(--head); }
+  .ipa { font-size:1.1rem; margin-top:6px; color:var(--border); }
   .hint { opacity:.6; font-size:.85rem; margin-top:14px; }
   .row { display:flex; gap:10px; margin-top:12px; }
   button { flex:1; padding:16px; font-size:1.05rem; color:#fff; background:var(--card); border:1px solid var(--border); border-radius:12px; }
@@ -89,7 +90,7 @@ function render() {
     $("#card").onclick = () => { flipped = true; render(); speak(c.en); };
   } else {
     stage.innerHTML = `<div class="card" id="card">${picHtml(c)}<div class="ru">${c.ru}</div>
-      <div class="en">${c.en}</div><div class="hint">Нажмите, чтобы послушать ещё раз</div></div>
+      <div class="en">${c.en}</div><div class="ipa">${c.ipa}</div><div class="hint">Нажмите, чтобы послушать ещё раз</div></div>
       <div class="row"><button class="no" id="no">Не знал</button><button class="ok" id="ok">Знал</button></div>`;
     $("#card").onclick = () => speak(c.en);
     $("#ok").onclick = () => answer(true);
