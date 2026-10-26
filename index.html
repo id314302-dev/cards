@@ -27,11 +27,20 @@
   button.ok { background:var(--ok); } button.no { background:var(--no); }
   .small { flex:0; padding:10px 14px; font-size:.85rem; }
   .done { text-align:center; } .done h2 { color:var(--head); }
+  .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+  .nav { flex:none; display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .nav button { flex:none; padding:8px 22px; font-size:1.2rem; } .nav span { opacity:.8; }
+  #list { position:fixed; inset:0; z-index:10; background:var(--bg); overflow:auto; padding:16px; display:none; }
+  #list.open { display:block; } #list .wrap { max-width:480px; margin:0 auto; }
+  .item { display:flex; gap:12px; align-items:center; padding:10px; margin-bottom:8px; background:var(--card);
+          border:1px solid var(--border); border-radius:12px; cursor:pointer; }
+  .item .th { width:48px; text-align:center; font-size:2rem; } .item img { width:48px; height:48px; object-fit:cover; border-radius:8px; vertical-align:middle; }
+  .item .t { flex:1; } .item small { display:block; opacity:.7; margin-top:2px; }
   footer { flex:none; max-width:480px; width:100%; margin:12px auto 0; display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
 </style>
 </head>
 <body>
-<h1>Карточки English</h1>
+<div class="top"><h1>Карточки English</h1><button class="small" id="open-list">Список</button></div>
 <div id="stats"></div>
 <div id="stage"></div>
 <footer>
@@ -39,6 +48,7 @@
   <button class="small" id="load">Загрузить прогресс</button>
   <input type="file" id="file" accept=".json" hidden>
 </footer>
+<div id="list"><div class="wrap"><div class="top"><h1>Все карточки</h1><button class="small" id="close-list">Закрыть</button></div><div id="items"></div></div></div>
 <script src="cards.js"></script>
 <script>
 const KEY = "cards-progress-v1";
@@ -85,18 +95,52 @@ function next() {
 function render() {
   const c = current;
   if (!flipped) {
-    stage.innerHTML = `<div class="card" id="card">${picHtml(c)}<div class="ru">${c.ru}</div>
+    stage.innerHTML = navHtml() + `<div class="card" id="card">${picHtml(c)}<div class="ru">${c.ru}</div>
       <div class="hint">Вспомните вслух, потом нажмите на карточку</div></div>`;
     $("#card").onclick = () => { flipped = true; render(); speak(c.en); };
   } else {
-    stage.innerHTML = `<div class="card" id="card">${picHtml(c)}<div class="ru">${c.ru}</div>
+    stage.innerHTML = navHtml() + `<div class="card" id="card">${picHtml(c)}<div class="ru">${c.ru}</div>
       <div class="en">${c.en}</div><div class="ipa">${c.ipa}</div><div class="hint">Нажмите, чтобы послушать ещё раз</div></div>
       <div class="row"><button class="no" id="no">Не знал</button><button class="ok" id="ok">Знал</button></div>`;
     $("#card").onclick = () => speak(c.en);
     $("#ok").onclick = () => answer(true);
     $("#no").onclick = () => answer(false);
   }
+  $("#prev").onclick = () => go(-1);
+  $("#next").onclick = () => go(1);
 }
+
+function navHtml() {
+  return `<div class="nav"><button id="prev">←</button><span>${CARDS.indexOf(current) + 1} / ${CARDS.length}</span><button id="next">→</button></div>`;
+}
+
+function go(d) {
+  const i = CARDS.indexOf(current);
+  current = CARDS[(i + d + CARDS.length) % CARDS.length];
+  flipped = false;
+  render();
+}
+
+function openList() {
+  const now = Date.now();
+  $("#items").innerHTML = CARDS.map(c => {
+    const s = state[c.id];
+    const status = !s ? "новая" : s.due <= now ? "пора повторить" : `повторить через ${Math.ceil((s.due - now) / DAY)} дн.`;
+    return `<div class="item" data-id="${c.id}"><div class="th"><img src="img/${c.id}.jpg" alt="" onerror="this.replaceWith(document.createTextNode('${c.emoji}'))"></div>
+      <div class="t">${c.id}. ${c.ru}<small>${status}</small></div></div>`;
+  }).join("");
+  $("#list").classList.add("open");
+}
+
+$("#open-list").onclick = openList;
+$("#close-list").onclick = () => $("#list").classList.remove("open");
+$("#items").onclick = e => {
+  const it = e.target.closest(".item"); if (!it) return;
+  current = CARDS.find(c => c.id === +it.dataset.id);
+  flipped = false;
+  $("#list").classList.remove("open");
+  render();
+};
 
 function answer(known) {
   const s = state[current.id] || { box: 0, due: 0 };
