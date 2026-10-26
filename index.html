@@ -25,6 +25,14 @@
   .snd { display:flex; gap:8px; margin-top:10px; }
   .en b { color:#fff; font-weight:800; } .en span { opacity:.6; font-weight:400; }
   .rhythm { font-size:.75rem; opacity:.55; margin-top:6px; }
+  .en.long { font-size:1.05rem; line-height:1.45; }
+  .cue { font-size:1.05rem; opacity:.75; margin-bottom:6px; }
+  .fadetext { font-size:1.25rem; line-height:1.5; margin-top:8px; }
+  .fadetext i { font-style:normal; opacity:.45; letter-spacing:1px; }
+  .lvl { font-size:.8rem; opacity:.7; margin-top:8px; }
+  .row2 { flex:none; display:flex; gap:8px; margin-top:8px; }
+  .row2 button { padding:12px 8px; font-size:.9rem; }
+  button:disabled { opacity:.35; }
   .hint { opacity:.6; font-size:.85rem; margin-top:8px; }
   .row { flex:none; display:flex; gap:10px; margin-top:12px; }
   button { flex:1; padding:16px; font-size:1.05rem; color:#fff; background:var(--card); border:1px solid var(--border); border-radius:12px; }
@@ -53,6 +61,7 @@
   <select id="deck" aria-label="Колода"></select>
   <button class="small" id="m-cards">Карточки</button>
   <button class="small" id="m-drill">Дрил</button>
+  <button class="small" id="m-fade">Тает</button>
 </div>
 <div id="stats"></div>
 <div id="stage"></div>
@@ -77,14 +86,15 @@ const prefs = loadJson(PREF);
 const $ = s => document.querySelector(s);
 const stage = $("#stage");
 let D = DECKS.find(d => d.id === prefs.deck) || DECKS[0];   // текущая колода
-let mode = prefs.mode === "drill" ? "drill" : "cards";
+let mode = ["drill", "fade"].includes(prefs.mode) ? prefs.mode : "cards";
+let level = Math.min(4, Math.max(0, +prefs.level || 0));   // «Тает»: 0 — весь текст … 4 — только подсказка
 let current = null, flipped = false;
 
 // У первой колоды ключи прогресса остались прежними (просто номер), у остальных — «колода:номер»
 const k = c => D.id === "core" ? String(c.id) : `${D.id}:${c.id}`;
 const imgSrc = c => `img/${D.dir}${c.id}.jpg`;
-const thumb = c => `<img src="${imgSrc(c)}" alt="" onerror="this.replaceWith(document.createTextNode('${c.emoji}'))">`;
-const picHtml = c => `<div class="pic">${thumb(c)}</div>`;
+const thumb = c => D.noimg ? c.emoji : `<img src="${imgSrc(c)}" alt="" onerror="this.replaceWith(document.createTextNode('${c.emoji}'))">`;
+const picHtml = c => D.noimg ? `<div class="pic" style="font-size:2.2rem">${c.emoji}</div>` : `<div class="pic">${thumb(c)}</div>`;
 
 // ---------- Режим «Карточки» (интервальное повторение) ----------
 
@@ -121,7 +131,7 @@ function render() {
     $("#card").onclick = () => { flipped = true; render(); play(c, false); };
   } else {
     stage.innerHTML = navHtml() + `<div class="card" id="card">${picHtml(c)}<div class="ru">${c.ru}</div>
-      <div class="en">${stressHtml(c)}</div><div class="ipa">${c.ipa}</div><div class="rhythm">Жирным — ударные слова, на них держится ритм</div>
+      <div class="en${c.en.length > 90 ? " long" : ""}">${stressHtml(c)}</div>${c.ipa ? `<div class="ipa">${c.ipa}</div><div class="rhythm">Жирным — ударные слова, на них держится ритм</div>` : ""}
       <div class="snd"><button class="small" id="p1">🔊 Обычно</button><button class="small" id="p2">🐢 Медленно</button></div></div>
       <div class="row"><button class="no" id="no">Не знал</button><button class="ok" id="ok">Знал</button></div>`;
     $("#card").onclick = () => play(c, false);
@@ -136,6 +146,7 @@ function render() {
 
 // Ударные слова берём из транскрипции: слово ударное, если его IPA начинается с ˈ
 function stressHtml(c) {
+  if (!c.ipa) return c.en;
   const words = c.en.split(" "), ipa = c.ipa.replace(/[\[\]]/g, "").split(" ");
   if (words.length !== ipa.length) return c.en;
   return words.map((w, i) => ipa[i].startsWith("ˈ") ? `<b>${w}</b>` : `<span>${w}</span>`).join(" ");
@@ -216,7 +227,7 @@ function drillRender(autoplay) {
     $("#show").onclick = () => { drill.shown = true; drillRender(false); };
   } else {
     stage.innerHTML = head + `<div class="card" id="card">${picHtml(c)}<div class="ru">${c.ru}</div>
-      <div class="en">${stressHtml(c)}</div><div class="ipa">${c.ipa}</div>
+      <div class="en${c.en.length > 90 ? " long" : ""}">${stressHtml(c)}</div>${c.ipa ? `<div class="ipa">${c.ipa}</div>` : ""}
       <div class="snd"><button class="small" id="p1">🔊 Обычно</button><button class="small" id="p2">🐢 Медленно</button></div></div>
       <div class="row">${chain && drill.pos > 0 ? '<button class="back" id="dprev">←</button>' : ""}<button class="ok" id="dnext">Дальше →</button></div>`;
     $("#card").onclick = () => play(c, false);
@@ -229,6 +240,49 @@ function drillRender(autoplay) {
   if (autoplay) play(c, false);
 }
 
+// ---------- Режим «Тает»: текст кусками по порядку, слова постепенно скрываются ----------
+// Уровни: 0 весь текст · 1 нет каждого 3-го слова · 2 нет каждого 2-го · 3 только первые буквы · 4 только подсказка по-русски.
+// Уровень общий для всех кусков: поставили 3 и прошли весь скрипт подряд.
+
+const LEVELS = ["весь текст", "скрыто каждое 3-е слово", "скрыто каждое 2-е слово", "только первые буквы", "только подсказка"];
+const fade = { pos: 0, peek: false };
+
+function maskText(text, lv) {
+  if (lv === 0) return text;
+  if (lv === 4) return "";
+  let i = 0;
+  return text.replace(/[A-Za-z0-9][A-Za-z0-9'’\-]*/g, w => {
+    const n = i++;
+    if (lv === 1 && n % 3 !== 2) return w;
+    if (lv === 2 && n % 2 !== 1) return w;
+    return lv === 3 ? `<i>${w[0]}${"_".repeat(w.length - 1)}</i>` : `<i>${"_".repeat(w.length)}</i>`;
+  });
+}
+
+function fadeStart(pos) { fade.pos = pos; fade.peek = false; fadeRender(); }
+
+function fadeRender() {
+  const c = D.cards[fade.pos];
+  const shown = fade.peek ? 0 : level;
+  $("#stats").textContent = `Тает · ${LEVELS[level]}`;
+  const text = maskText(c.en, shown);
+  stage.innerHTML = `<div class="nav"><button id="fprev">←</button><span>${fade.pos + 1} / ${D.cards.length}</span><button id="fnext">→</button></div>
+    <div class="card" id="card"><div class="cue">${c.ru}</div>
+      <div class="fadetext">${text || '<span style="opacity:.5">Скажите вслух по памяти</span>'}</div>
+      <div class="lvl">Уровень ${level} из 4${fade.peek ? " · подсмотрели" : ""}</div></div>
+    <div class="row2"><button id="lless"${level === 0 ? " disabled" : ""}>← Подсказка</button><button id="lmore"${level === 4 ? " disabled" : ""}>Скрыть ещё →</button></div>
+    <div class="row2"><button id="p1">🔊 Послушать</button><button id="p2">🐢 Медленно</button><button id="peek">👁 Подсмотреть</button></div>
+    <div class="row"><button class="ok" id="fdone">Дальше →</button></div>`;
+  $("#card").onclick = () => { fade.peek = !fade.peek; fadeRender(); };
+  $("#fprev").onclick = () => fadeStart((fade.pos - 1 + D.cards.length) % D.cards.length);
+  $("#fnext").onclick = $("#fdone").onclick = () => fadeStart((fade.pos + 1) % D.cards.length);
+  $("#lless").onclick = () => { level--; saveJson(PREF, { deck: D.id, mode, level }); fade.peek = false; fadeRender(); };
+  $("#lmore").onclick = () => { level++; saveJson(PREF, { deck: D.id, mode, level }); fade.peek = false; fadeRender(); };
+  $("#peek").onclick = () => { fade.peek = !fade.peek; fadeRender(); };
+  $("#p1").onclick = () => play(c, false);
+  $("#p2").onclick = () => play(c, true);
+}
+
 // ---------- Колоды, режимы, список ----------
 
 function updateBar() {
@@ -236,24 +290,29 @@ function updateBar() {
   $("#deck").value = D.id;
   $("#m-cards").classList.toggle("on", mode === "cards");
   $("#m-drill").classList.toggle("on", mode === "drill");
+  $("#m-fade").classList.toggle("on", mode === "fade");
+  $("#m-fade").style.display = D.fade ? "" : "none";
 }
 
 function refresh(first) {
-  saveJson(PREF, { deck: D.id, mode });
+  if (mode === "fade" && !D.fade) mode = "cards";   // «Тает» — только для колод-скриптов
+  saveJson(PREF, { deck: D.id, mode, level });
   updateBar();
-  if (mode === "drill") drillStart("chain");
+  if (mode === "fade") fadeStart(0);
+  else if (mode === "drill") drillStart("chain");
   else { current = null; next(); }
 }
 
 $("#deck").onchange = e => { D = DECKS.find(d => d.id === e.target.value); refresh(); };
 $("#m-cards").onclick = () => { mode = "cards"; refresh(); };
 $("#m-drill").onclick = () => { mode = "drill"; refresh(); };
+$("#m-fade").onclick = () => { mode = "fade"; refresh(); };
 
 function openList() {
   const now = Date.now();
   $("#items").innerHTML = D.cards.map(c => {
     const s = state[k(c)];
-    const status = mode === "drill" ? "" : !s ? "новая" : s.due <= now ? "пора повторить" : `повторить через ${Math.ceil((s.due - now) / DAY)} дн.`;
+    const status = mode !== "cards" ? "" : !s ? "новая" : s.due <= now ? "пора повторить" : `повторить через ${Math.ceil((s.due - now) / DAY)} дн.`;
     return `<div class="item" data-id="${c.id}"><div class="th">${thumb(c)}</div>
       <div class="t">${c.id}. ${c.ru}<small>${status}</small></div></div>`;
   }).join("");
@@ -266,6 +325,7 @@ $("#items").onclick = e => {
   const it = e.target.closest(".item"); if (!it) return;
   const c = D.cards.find(x => x.id === +it.dataset.id);
   $("#list").classList.remove("open");
+  if (mode === "fade") { fadeStart(D.cards.indexOf(c)); return; }
   if (mode === "drill") { drillStart("chain", D.cards.indexOf(c)); return; }
   current = c; flipped = false; render();
 };
