@@ -22,6 +22,8 @@
   .en { font-size:1.4rem; margin-top:10px; color:var(--head); }
   .ipa { font-size:1rem; margin-top:4px; color:var(--border); }
   .snd { display:flex; gap:8px; margin-top:10px; }
+  .en b { color:#fff; font-weight:800; } .en span { opacity:.6; font-weight:400; }
+  .rhythm { font-size:.75rem; opacity:.55; margin-top:6px; }
   .hint { opacity:.6; font-size:.85rem; margin-top:8px; }
   .row { flex:none; display:flex; gap:10px; margin-top:12px; }
   button { flex:1; padding:16px; font-size:1.05rem; color:#fff; background:var(--card); border:1px solid var(--border); border-radius:12px; }
@@ -101,7 +103,7 @@ function render() {
     $("#card").onclick = () => { flipped = true; render(); play(c, false); };
   } else {
     stage.innerHTML = navHtml() + `<div class="card" id="card">${picHtml(c)}<div class="ru">${c.ru}</div>
-      <div class="en">${c.en}</div><div class="ipa">${c.ipa}</div>
+      <div class="en">${stressHtml(c)}</div><div class="ipa">${c.ipa}</div><div class="rhythm">Жирным — ударные слова, на них держится ритм</div>
       <div class="snd"><button class="small" id="p1">🔊 Обычно</button><button class="small" id="p2">🐢 Медленно</button></div></div>
       <div class="row"><button class="no" id="no">Не знал</button><button class="ok" id="ok">Знал</button></div>`;
     $("#card").onclick = () => play(c, false);
@@ -112,6 +114,13 @@ function render() {
   }
   $("#prev").onclick = () => go(-1);
   $("#next").onclick = () => go(1);
+}
+
+// Ударные слова берём из транскрипции: слово ударное, если его IPA начинается с ˈ
+function stressHtml(c) {
+  const words = c.en.split(" "), ipa = c.ipa.replace(/[\[\]]/g, "").split(" ");
+  if (words.length !== ipa.length) return c.en;
+  return words.map((w, i) => ipa[i].startsWith("ˈ") ? `<b>${w}</b>` : `<span>${w}</span>`).join(" ");
 }
 
 function navHtml() {
