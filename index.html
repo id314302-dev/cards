@@ -33,6 +33,8 @@
   .row2 { flex:none; display:flex; gap:8px; margin-top:8px; }
   .row2 button { padding:12px 8px; font-size:.9rem; }
   button:disabled { opacity:.35; }
+  .tip { font-size:.95rem; margin-top:8px; color:#ffd58a; }
+  .ctx { font-size:.9rem; margin-top:8px; opacity:.75; font-style:italic; }
   .hint { opacity:.6; font-size:.85rem; margin-top:8px; }
   .row { flex:none; display:flex; gap:10px; margin-top:12px; }
   button { flex:1; padding:16px; font-size:1.05rem; color:#fff; background:var(--card); border:1px solid var(--border); border-radius:12px; }
@@ -131,7 +133,7 @@ function render() {
     $("#card").onclick = () => { flipped = true; render(); play(c, false); };
   } else {
     stage.innerHTML = navHtml() + `<div class="card" id="card">${picHtml(c)}<div class="ru">${c.ru}</div>
-      <div class="en${c.en.length > 90 ? " long" : ""}">${stressHtml(c)}</div>${c.ipa ? `<div class="ipa">${c.ipa}</div><div class="rhythm">Жирным — ударные слова, на них держится ритм</div>` : ""}
+      <div class="en${c.en.length > 90 ? " long" : ""}">${stressHtml(c)}</div>${c.ipa ? `<div class="ipa">${c.ipa}</div>${c.en.includes(" ") ? `<div class="rhythm">Жирным — ударные слова, на них держится ритм</div>` : ""}${extraHtml(c)}` : ""}
       <div class="snd"><button class="small" id="p1">🔊 Обычно</button><button class="small" id="p2">🐢 Медленно</button></div></div>
       <div class="row"><button class="no" id="no">Не знал</button><button class="ok" id="ok">Знал</button></div>`;
     $("#card").onclick = () => play(c, false);
@@ -146,10 +148,15 @@ function render() {
 
 // Ударные слова берём из транскрипции: слово ударное, если его IPA начинается с ˈ
 function stressHtml(c) {
-  if (!c.ipa) return c.en;
+  if (!c.ipa || !c.en.includes(" ")) return c.en;   // одно слово: ударение показано в транскрипции и в подсказке
   const words = c.en.split(" "), ipa = c.ipa.replace(/[\[\]]/g, "").split(" ");
   if (words.length !== ipa.length) return c.en;
   return words.map((w, i) => ipa[i].startsWith("ˈ") ? `<b>${w}</b>` : `<span>${w}</span>`).join(" ");
+}
+
+// Подсказка по произношению и фраза из скрипта (есть у колоды «Трудные слова»)
+function extraHtml(c) {
+  return (c.tip ? `<div class="tip">${c.tip}</div>` : "") + (c.ctx ? `<div class="ctx">«…${c.ctx}…»</div>` : "");
 }
 
 function navHtml() {
@@ -227,7 +234,7 @@ function drillRender(autoplay) {
     $("#show").onclick = () => { drill.shown = true; drillRender(false); };
   } else {
     stage.innerHTML = head + `<div class="card" id="card">${picHtml(c)}<div class="ru">${c.ru}</div>
-      <div class="en${c.en.length > 90 ? " long" : ""}">${stressHtml(c)}</div>${c.ipa ? `<div class="ipa">${c.ipa}</div>` : ""}
+      <div class="en${c.en.length > 90 ? " long" : ""}">${stressHtml(c)}</div>${c.ipa ? `<div class="ipa">${c.ipa}</div>${extraHtml(c)}` : ""}
       <div class="snd"><button class="small" id="p1">🔊 Обычно</button><button class="small" id="p2">🐢 Медленно</button></div></div>
       <div class="row">${chain && drill.pos > 0 ? '<button class="back" id="dprev">←</button>' : ""}<button class="ok" id="dnext">Дальше →</button></div>`;
     $("#card").onclick = () => play(c, false);
