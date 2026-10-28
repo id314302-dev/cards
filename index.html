@@ -461,7 +461,11 @@ let audio = null;
 function play(c, slow) {
   try { speechSynthesis.cancel(); audio && audio.pause(); } catch {}
   const us = `audio/${D.dir}${c.id}.mp3`, uk = `audio-uk/${D.dir}${c.id}.mp3`;
-  const get = u => fetch(u).then(r => { if (!r.ok) throw 0; return r; });
+  // Из кэша ответ приходит сразу; если файла нет в кэше и сети нет, не ждём минутами (5 с), а переходим к запасному варианту
+  const get = u => {
+    const ac = new AbortController(), t = setTimeout(() => ac.abort(), 5000);
+    return fetch(u, { signal: ac.signal }).then(r => { clearTimeout(t); if (!r.ok) throw 0; return r; }, e => { clearTimeout(t); throw e; });
+  };
   // нет файла выбранного голоса (колода ещё не озвучена им) — играет другой голос
   (voice === "uk" ? get(uk).catch(() => get(us)) : get(us).catch(() => get(uk)))
     .then(r => r.blob())
@@ -502,7 +506,11 @@ $("#file").onchange = async e => {
   } catch { alert("Не удалось прочитать файл"); }
 };
 
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+  // при каждом запуске просим докачать то, чего не хватает в кэше (если прошлая загрузка оборвалась)
+  navigator.serviceWorker.ready.then(r => r.active && r.active.postMessage("precache")).catch(() => {});
+}
 voiceLabel();
 habitRender();
 refresh(true);
