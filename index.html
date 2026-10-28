@@ -39,6 +39,10 @@
   .meter { flex:1; height:6px; background:var(--card); border:1px solid var(--border); border-radius:4px; overflow:hidden; }
   .meter i { display:block; height:100%; width:0; background:var(--head); transition:width .3s; }
   .meter.done i { background:var(--ok); }
+  .w { font-weight:700; color:#fff; } .f { opacity:.6; font-weight:400; }
+  .m { color:#ffd58a; text-decoration:underline; text-underline-offset:4px; text-decoration-thickness:2px; }
+  .pz { color:var(--border); opacity:.8; margin:0 .3em; font-weight:400; } .ar { color:var(--head); font-size:.8em; margin:0 .2em; vertical-align:super; }
+  .legend { font-size:.72rem; opacity:.6; margin-top:10px; font-weight:400; color:var(--text); line-height:1.4; }
   .hint { opacity:.6; font-size:.85rem; margin-top:8px; }
   .row { flex:none; display:flex; gap:10px; margin-top:12px; }
   button { flex:1; padding:16px; font-size:1.05rem; color:#fff; background:var(--card); border:1px solid var(--border); border-radius:12px; }
@@ -62,7 +66,7 @@
 </style>
 </head>
 <body>
-<div class="top"><h1>Карточки English</h1><button class="small" id="open-list">Список</button></div>
+<div class="top"><h1>Карточки English</h1><div style="display:flex;gap:6px"><button class="small" id="voice" title="Голос озвучки">🔊 UK</button><button class="small" id="open-list">Список</button></div></div>
 <div class="bar">
   <select id="deck" aria-label="Колода"></select>
   <button class="small" id="m-cards">Карточки</button>
@@ -90,6 +94,7 @@ function saveJson(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); 
 const $ = s => document.querySelector(s);
 let state = loadJson(KEY);   // { ключ карточки: { box, due } }
 const prefs = loadJson(PREF);
+function savePrefs() { saveJson(PREF, { deck: D.id, mode, level, voice }); }
 
 // ---------- Привычка: серия дней и дневная цель ----------
 // Время занятий считаем по нажатиям: пауза дольше 45 с не засчитывается, одиночное нажатие даёт 5 с.
@@ -131,6 +136,7 @@ $("#habit").onclick = () => { const g = [2, 3, 5, 10]; habit.goal = g[(g.indexOf
 const stage = $("#stage");
 let D = DECKS.find(d => d.id === prefs.deck) || DECKS[0];   // текущая колода
 let mode = ["drill", "fade"].includes(prefs.mode) ? prefs.mode : "cards";
+let voice = prefs.voice === "us" ? "us" : "uk";   // голос озвучки: uk — британский (Johnny Kid), us — американский (Jon Catalyst)
 let level = Math.min(4, Math.max(0, +prefs.level || 0));   // «Тает»: 0 — весь текст … 4 — только подсказка
 let current = null, flipped = false;
 
@@ -188,8 +194,42 @@ function render() {
   $("#next").onclick = () => go(1);
 }
 
+// ---------- Разметка для чтения вслух (поле mk у карточек скрипта) ----------
+// В mk: *слово* — главное слово фразы, «/» короткая пауза, «//» длинная, «↗» «↘» — интонация.
+// Смысловые слова (жирные) определяются автоматически: всё, кроме служебных слов из списка STOP.
+const STOP = new Set(("a an the to of in on at by for with from into as and or but if so than that this these those it its i me my you your we our us he him his she her they them their is are was were be been being am do does did have has had will would should can could may might must there").split(" "));
+
+function markTokens(mk) {
+  return mk.split(" ").map(t => {
+    if (t === "/" || t === "//") return { pause: t.length };
+    if (t === "↗" || t === "↘") return { arrow: t };
+    const m = t.match(/^([^*A-Za-z0-9]*)(\*)?([A-Za-z0-9][A-Za-z0-9'’\-]*)(\*)?(.*)$/);
+    if (!m) return { raw: t };
+    const core = m[3];
+    return { pre: m[1], core, post: m[5], main: !!(m[2] || m[4]), fn: STOP.has(core.toLowerCase()) };
+  });
+}
+
+// lv — уровень «Тает» (0 весь текст … 3 первые буквы), legend — подпись с расшифровкой знаков
+function markHtml(c, lv = 0, legend = false) {
+  let i = 0;
+  const out = markTokens(c.mk).map(t => {
+    if (t.pause) return `<span class="pz">${t.pause > 1 ? "║" : "│"}</span>`;
+    if (t.arrow) return `<span class="ar">${t.arrow}</span>`;
+    if (t.raw !== undefined) return t.raw;
+    const n = i++;
+    let hide = (lv === 1 && n % 3 === 2) || (lv === 2 && n % 2 === 1) || lv === 3;
+    let word;
+    if (hide) word = `<i>${lv === 3 ? t.core[0] + "_".repeat(t.core.length - 1) : "_".repeat(t.core.length)}</i>`;
+    else word = `<span class="${t.main ? "w m" : t.fn ? "f" : "w"}">${t.core}</span>`;
+    return t.pre + word + t.post;
+  }).join(" ");
+  return out + (legend ? '<div class="legend">Жирное — смысловые слова, <span class="m">главное</span> — на нём голос поднимается, │ короткая пауза, ║ длинная, ↗ ↘ интонация</div>' : "");
+}
+
 // Ударные слова берём из транскрипции: слово ударное, если его IPA начинается с ˈ
 function stressHtml(c) {
+  if (c.mk) return markHtml(c, 0, true);
   if (!c.ipa || !c.en.includes(" ")) return c.en;   // одно слово: ударение показано в транскрипции и в подсказке
   const words = c.en.split(" "), ipa = c.ipa.replace(/[\[\]]/g, "").split(" ");
   if (words.length !== ipa.length) return c.en;
@@ -309,13 +349,13 @@ function maskText(text, lv) {
 }
 
 // Каждый новый кусок начинается с уровня 0 (весь текст); дальше скрываете сами
-function fadeStart(pos) { fade.pos = pos; fade.peek = false; level = 0; saveJson(PREF, { deck: D.id, mode, level }); fadeRender(); }
+function fadeStart(pos) { fade.pos = pos; fade.peek = false; level = 0; savePrefs(); fadeRender(); }
 
 function fadeRender() {
   const c = D.cards[fade.pos];
   const shown = fade.peek ? 0 : level;
   $("#stats").textContent = `Тает · ${LEVELS[level]}`;
-  const text = maskText(c.en, shown);
+  const text = shown === 4 ? "" : c.mk ? markHtml(c, shown, shown === 0) : maskText(c.en, shown);
   stage.innerHTML = `<div class="nav"><button id="fprev">←</button><span>${fade.pos + 1} / ${D.cards.length}</span><button id="fnext">→</button></div>
     <div class="card" id="card"><div class="cue">${c.ru}</div>
       <div class="fadetext">${text || '<span style="opacity:.5">Скажите вслух по памяти</span>'}</div>
@@ -326,8 +366,8 @@ function fadeRender() {
   $("#card").onclick = () => { fade.peek = !fade.peek; fadeRender(); };
   $("#fprev").onclick = () => fadeStart((fade.pos - 1 + D.cards.length) % D.cards.length);
   $("#fnext").onclick = $("#fdone").onclick = () => fadeStart((fade.pos + 1) % D.cards.length);
-  $("#lless").onclick = () => { level--; saveJson(PREF, { deck: D.id, mode, level }); fade.peek = false; fadeRender(); };
-  $("#lmore").onclick = () => { level++; saveJson(PREF, { deck: D.id, mode, level }); fade.peek = false; fadeRender(); };
+  $("#lless").onclick = () => { level--; savePrefs(); fade.peek = false; fadeRender(); };
+  $("#lmore").onclick = () => { level++; savePrefs(); fade.peek = false; fadeRender(); };
   $("#peek").onclick = () => { fade.peek = !fade.peek; fadeRender(); };
   $("#p1").onclick = () => play(c, false);
   $("#p2").onclick = () => play(c, true);
@@ -346,7 +386,7 @@ function updateBar() {
 
 function refresh(first) {
   if (mode === "fade" && !D.fade) mode = "cards";   // «Тает» — только для колод-скриптов
-  saveJson(PREF, { deck: D.id, mode, level });
+  savePrefs();
   updateBar();
   if (mode === "fade") fadeStart(0);
   else if (mode === "drill") drillStart("chain");
@@ -369,6 +409,8 @@ function openList() {
   $("#list").classList.add("open");
 }
 
+function voiceLabel() { $("#voice").textContent = "🔊 " + voice.toUpperCase(); }
+$("#voice").onclick = () => { voice = voice === "uk" ? "us" : "uk"; savePrefs(); voiceLabel(); };
 $("#open-list").onclick = openList;
 $("#close-list").onclick = () => $("#list").classList.remove("open");
 $("#items").onclick = e => {
@@ -387,8 +429,11 @@ let audio = null;
 // Готовая озвучка из audio/; если файла нет — голос телефона
 function play(c, slow) {
   try { speechSynthesis.cancel(); audio && audio.pause(); } catch {}
-  fetch(`audio/${D.dir}${c.id}.mp3`)
-    .then(r => { if (!r.ok) throw 0; return r.blob(); })
+  const us = `audio/${D.dir}${c.id}.mp3`, uk = `audio-uk/${D.dir}${c.id}.mp3`;
+  const get = u => fetch(u).then(r => { if (!r.ok) throw 0; return r; });
+  // нет файла выбранного голоса (колода ещё не озвучена им) — играет другой голос
+  (voice === "uk" ? get(uk).catch(() => get(us)) : get(us).catch(() => get(uk)))
+    .then(r => r.blob())
     .then(b => {
       audio = new Audio(URL.createObjectURL(b));
       audio.preservesPitch = true;
@@ -427,6 +472,7 @@ $("#file").onchange = async e => {
 };
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+voiceLabel();
 habitRender();
 refresh(true);
 </script>

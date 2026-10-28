@@ -1,12 +1,12 @@
 // Сетевой запрос в приоритете (чтобы подтягивать новую версию), при отсутствии сети — кэш.
 importScripts("cards.js");   // даёт список колод DECKS, из него собираем файлы для кэша
 
-const CACHE = "cards-v6";
+const CACHE = "cards-v7";
 const FILES = ["./", "index.html", "cards.js", "manifest.json", "icon-v2-192.png", "icon-v2-512.png",
-  ...DECKS.flatMap(d => d.cards.flatMap(c => d.noimg ? [`audio/${d.dir}${c.id}.mp3`] : [`audio/${d.dir}${c.id}.mp3`, `img/${d.dir}${c.id}.jpg`]))];
+  ...DECKS.flatMap(d => d.cards.flatMap(c => [`audio/${d.dir}${c.id}.mp3`, `audio-uk/${d.dir}${c.id}.mp3`, ...(d.noimg ? [] : [`img/${d.dir}${c.id}.jpg`])]))];
 
 self.addEventListener("install", e => {
-  // allSettled: если для какой-то карточки ещё нет картинки, остальное всё равно сохранится
+  // allSettled: если для какой-то карточки ещё нет картинки или британской озвучки (audio-uk/), остальное всё равно сохранится
   e.waitUntil(caches.open(CACHE).then(c => Promise.allSettled(FILES.map(f => c.add(f)))));
   self.skipWaiting();
 });
