@@ -116,6 +116,8 @@ def main():
     sessions = []
     for deck in read_decks():
         for voice in VOICES:
+            if not os.path.exists(os.path.join(ROOT, VOICES[voice], f"{deck['dir']}{deck['ids'][0]}.mp3")):
+                continue   # у колоды нет озвучки этим голосом
             cache = {}
             kinds = [("shadow", "chain")]
             if deck["id"] in DRILL_DECKS:
