@@ -1,7 +1,7 @@
 // Колоды. Режим «Дрил» доступен для любой колоды. fade: true — ещё режим «Тает», noimg: true — без картинок, mk — разметка для чтения вслух (все три нужны колодам-скриптам; сейчас у колод этого приложения их нет, скрипт живёт в приложении «Скрипт ролика»). dir — подпапка в img/ и audio/ (у первой колоды файлы лежат в корне, как раньше).
 // В карточке id — номер внутри колоды; картинка img/<dir><id>.jpg, озвучка audio/<dir><id>.mp3, иначе emoji.
 const DECKS = [
-  { id: "core", name: "Основа: 20 действий", dir: "", cards: [
+  { id: "core", name: "🎯 Основа: 20 действий", dir: "", cards: [
     { id: 1,  emoji: "📱", ru: "Возьми телефон",                en: "Pick up the phone.", ipa: "[ˈpɪk ʌp ðə ˈfoʊn]" },
     { id: 2,  emoji: "☕", ru: "Поставь чашку на стол",         en: "Put the cup down on the table.", ipa: "[ˈpʊt ðə ˈkʌp ˈdaʊn ɑn ðə ˈteɪbəl]" },
     { id: 3,  emoji: "📖", ru: "Отодвинь книгу в сторону",      en: "Move the book aside.", ipa: "[ˈmuv ðə ˈbʊk əˈsaɪd]" },
@@ -23,7 +23,7 @@ const DECKS = [
     { id: 19, emoji: "🙃", ru: "Переверни чашку вверх дном",    en: "Turn the cup upside down.", ipa: "[ˈtɝn ðə ˈkʌp ˈʌpsaɪd ˈdaʊn]" },
     { id: 20, emoji: "🗝️", ru: "Оставь ключи там",              en: "Leave the keys there.", ipa: "[ˈliv ðə ˈkiz ˈðɛr]" },
   ] },
-  { id: "cup", name: "Чашка: дрил", dir: "cup/", cards: [
+  { id: "cup", name: "☕ Чашка: дрил", dir: "cup/", cards: [
     { id: 1, emoji: "☕", ru: "Возьми чашку", en: "Pick up the cup.", ipa: "[ˈpɪk ʌp ðə ˈkʌp]" },
     { id: 2, emoji: "🍽️", ru: "Поставь чашку на стол", en: "Put the cup down on the table.", ipa: "[ˈpʊt ðə ˈkʌp ˈdaʊn ɑn ðə ˈteɪbəl]" },
     { id: 3, emoji: "🔄", ru: "Поверни чашку", en: "Turn the cup around.", ipa: "[ˈtɝn ðə ˈkʌp əˈraʊnd]" },
@@ -58,7 +58,7 @@ const DECKS = [
     { id: 32, emoji: "🙃", ru: "Переверни чашку вверх дном", en: "Turn the cup upside down.", ipa: "[ˈtɝn ðə ˈkʌp ˈʌpsaɪd ˈdaʊn]" },
     { id: 33, emoji: "📍", ru: "Оставь чашку там", en: "Leave the cup there.", ipa: "[ˈliv ðə ˈkʌp ˈðɛr]" },
   ] },
-  { id: "verbs", name: "Первые 50 глаголов", dir: "verbs/", noimg: true, cards: [
+  { id: "verbs", name: "⚡ Первые 50 глаголов", dir: "verbs/", noimg: true, cards: [
     { id: 1, emoji: "💧", ru: "иметь · У вас есть вода?", en: "Do you have water?", mk: "Do you have *water*? ↗" },
     { id: 2, emoji: "☕", ru: "хотеть · Я хочу кофе.", en: "I want a coffee.", mk: "I want a *coffee*." },
     { id: 3, emoji: "🤷", ru: "знать · Я не знаю.", en: "I don't know.", mk: "I don't *know*." },
@@ -110,7 +110,7 @@ const DECKS = [
     { id: 49, emoji: "🪑", ru: "сидеть, садиться · Садитесь, пожалуйста.", en: "Please sit down.", mk: "Please *sit* down." },
     { id: 50, emoji: "😴", ru: "спать · Я хочу спать.", en: "I want to sleep.", mk: "I want to *sleep*." },
   ] },
-  { id: "frames", name: "Схемы фраз", dir: "frames/", noimg: true, cards: [
+  { id: "frames", name: "🧩 Схемы фраз", dir: "frames/", noimg: true, cards: [
     { id: 1, emoji: "🙏", ru: "Можно мне… · Можно мне воды?", en: "Can I have water?", mk: "Can I have *water*? ↗" },
     { id: 2, emoji: "🙏", ru: "Можно мне… · Можно мне меню?", en: "Can I have the menu?", mk: "Can I have the *menu*? ↗" },
     { id: 3, emoji: "🙏", ru: "Можно мне… · Можно мне кофе?", en: "Can I have a coffee?", mk: "Can I have a *coffee*? ↗" },
@@ -160,7 +160,7 @@ const DECKS = [
     { id: 47, emoji: "🙌", ru: "Давай… · Давай начнём.", en: "Let's start.", mk: "Let's *start*." },
     { id: 48, emoji: "🙌", ru: "Давай… · Давай сделаем перерыв.", en: "Let's take a break.", mk: "Let's take a *break*." },
   ] },
-  { id: "irregular", name: "Неправильные глаголы", dir: "irregular/", noimg: true, cards: [
+  { id: "irregular", name: "🔀 Неправильные глаголы", dir: "irregular/", noimg: true, cards: [
     { id: 1, emoji: "🚶", ru: "идти · go – went – gone · Я пошёл домой.", en: "I went home.", mk: "I *went* *home*." },
     { id: 2, emoji: "☕", ru: "иметь · have – had – had · Я выпил кофе.", en: "I had a coffee.", mk: "I *had* a *coffee*." },
     { id: 3, emoji: "✅", ru: "делать · do – did – done · Я это сделал.", en: "I did it.", mk: "I *did* it." },
@@ -198,7 +198,7 @@ const DECKS = [
     { id: 35, emoji: "🧾", ru: "хранить · keep – kept – kept · Я сохранил чек.", en: "I kept the receipt.", mk: "I *kept* the *receipt*." },
     { id: 36, emoji: "📦", ru: "класть · put – put – put · Я положил это на стол.", en: "I put it on the table.", mk: "I *put* it on the *table*." },
   ] },
-  { id: "w_food", name: "Слова: еда и напитки", dir: "w_food/", noimg: true, cards: [
+  { id: "w_food", name: "🍎 Слова: еда и напитки", dir: "w_food/", noimg: true, cards: [
     { id: 1, emoji: "🍞", ru: "хлеб · bread · Я хочу хлеба.", en: "I want some bread.", mk: "I want some *bread*." },
     { id: 2, emoji: "🍲", ru: "суп · soup · Суп очень горячий.", en: "The soup is very hot.", mk: "The *soup* is very *hot*." },
     { id: 3, emoji: "🍚", ru: "рис · rice · Мне нравится рис.", en: "I like rice.", mk: "I like *rice*." },
@@ -240,7 +240,7 @@ const DECKS = [
     { id: 39, emoji: "🍴", ru: "вилка · fork · У меня нет вилки.", en: "I don't have a fork.", mk: "I don't have a *fork*." },
     { id: 40, emoji: "😋", ru: "голодный · hungry · Я очень голоден.", en: "I'm very hungry.", mk: "I'm very *hungry*." },
   ] },
-  { id: "w_home", name: "Слова: дом и вещи", dir: "w_home/", noimg: true, cards: [
+  { id: "w_home", name: "🏠 Слова: дом и вещи", dir: "w_home/", noimg: true, cards: [
     { id: 1, emoji: "🚪", ru: "дверь · door · Закройте дверь, пожалуйста.", en: "Please close the door.", mk: "Please close the *door*." },
     { id: 2, emoji: "🪟", ru: "окно · window · Откройте окно.", en: "Open the window.", mk: "Open the *window*." },
     { id: 3, emoji: "🔑", ru: "ключ · key · Где мой ключ?", en: "Where is my key?", mk: "Where is my *key*? ↘" },
@@ -282,7 +282,7 @@ const DECKS = [
     { id: 39, emoji: "🌳", ru: "сад · garden · У нас большой сад.", en: "We have a big garden.", mk: "We have a big *garden*." },
     { id: 40, emoji: "🗑️", ru: "мусор · rubbish · Вынеси мусор.", en: "Take out the rubbish.", mk: "Take out the *rubbish*." },
   ] },
-  { id: "w_people", name: "Слова: люди и семья", dir: "w_people/", noimg: true, cards: [
+  { id: "w_people", name: "👨‍👩‍👧 Слова: люди и семья", dir: "w_people/", noimg: true, cards: [
     { id: 1, emoji: "👩", ru: "мама · mother · Моя мама работает.", en: "My mother works.", mk: "My *mother works*." },
     { id: 2, emoji: "👨", ru: "отец · father · Мой отец дома.", en: "My father is at home.", mk: "My *father* is at *home*." },
     { id: 3, emoji: "👦", ru: "брат · brother · У меня есть брат.", en: "I have a brother.", mk: "I have a *brother*." },
@@ -325,7 +325,7 @@ const DECKS = [
     { id: 40, emoji: "🧳", ru: "пассажир · passenger · Пассажир потерял билет.", en: "The passenger lost his ticket.", mk: "The *passenger* lost his *ticket*." },
     { id: 41, emoji: "📸", ru: "турист · tourist · Я здесь турист.", en: "I'm a tourist here.", mk: "I'm a *tourist* here." },
   ] },
-  { id: "w_body", name: "Слова: тело и здоровье", dir: "w_body/", noimg: true, cards: [
+  { id: "w_body", name: "🩺 Слова: тело и здоровье", dir: "w_body/", noimg: true, cards: [
     { id: 1, emoji: "🙂", ru: "голова · head · У меня болит голова.", en: "My head hurts.", mk: "My *head hurts*." },
     { id: 2, emoji: "😀", ru: "лицо · face · Умой лицо.", en: "Wash your face.", mk: "Wash your *face*." },
     { id: 3, emoji: "👁️", ru: "глаз · eye · У меня болит глаз.", en: "My eye hurts.", mk: "My *eye hurts*." },
@@ -368,7 +368,7 @@ const DECKS = [
     { id: 40, emoji: "🚑", ru: "скорая помощь · ambulance · Вызовите скорую.", en: "Call an ambulance.", mk: "Call an *ambulance*." },
     { id: 41, emoji: "😴", ru: "сон · sleep · Мне нужно больше сна.", en: "I need more sleep.", mk: "I need more *sleep*." },
   ] },
-  { id: "w_places", name: "Слова: места и транспорт", dir: "w_places/", noimg: true, cards: [
+  { id: "w_places", name: "🚌 Слова: места и транспорт", dir: "w_places/", noimg: true, cards: [
     { id: 1, emoji: "🛣️", ru: "улица · street · Эта улица очень тихая.", en: "This street is very quiet.", mk: "This *street* is very *quiet*." },
     { id: 2, emoji: "🛤️", ru: "дорога · road · Дорога закрыта.", en: "The road is closed.", mk: "The *road* is *closed*." },
     { id: 3, emoji: "🏙️", ru: "город · city · Это большой город.", en: "It's a big city.", mk: "It's a big *city*." },
@@ -412,7 +412,7 @@ const DECKS = [
     { id: 41, emoji: "🏛️", ru: "площадь · square · Встретимся на площади.", en: "Let's meet in the square.", mk: "Let's meet in the *square*." },
     { id: 42, emoji: "🅿️", ru: "парковка · parking · Здесь есть парковка?", en: "Is there parking here?", mk: "Is there *parking* here? ↗" },
   ] },
-  { id: "w_time", name: "Слова: время и числа", dir: "w_time/", noimg: true, cards: [
+  { id: "w_time", name: "⏰ Слова: время и числа", dir: "w_time/", noimg: true, cards: [
     { id: 1, emoji: "🌅", ru: "утро · morning · Доброе утро.", en: "Good morning.", mk: "Good *morning*." },
     { id: 2, emoji: "🌞", ru: "день · afternoon · Увидимся днём.", en: "See you in the afternoon.", mk: "See you in the *afternoon*." },
     { id: 3, emoji: "🌆", ru: "вечер · evening · Вечером я дома.", en: "I'm at home in the evening.", mk: "I'm at home in the *evening*." },
@@ -455,7 +455,7 @@ const DECKS = [
     { id: 40, emoji: "🌸", ru: "весна · spring · Весной всё цветёт.", en: "Everything blooms in spring.", mk: "Everything blooms in *spring*." },
     { id: 41, emoji: "🍂", ru: "осень · autumn · Осенью идут дожди.", en: "It rains a lot in autumn.", mk: "It rains a lot in *autumn*." },
   ] },
-  { id: "w_adj", name: "Слова: прилагательные", dir: "w_adj/", noimg: true, cards: [
+  { id: "w_adj", name: "🎨 Слова: прилагательные", dir: "w_adj/", noimg: true, cards: [
     { id: 1, emoji: "🐘", ru: "большой · big · Это большой дом.", en: "It's a big house.", mk: "It's a *big house*." },
     { id: 2, emoji: "🐭", ru: "маленький · small · Комната маленькая.", en: "The room is small.", mk: "The room is *small*." },
     { id: 3, emoji: "🆕", ru: "новый · new · У меня новый телефон.", en: "I have a new phone.", mk: "I have a *new phone*." },
@@ -498,7 +498,7 @@ const DECKS = [
     { id: 40, emoji: "💪", ru: "сильный · strong · Он очень сильный.", en: "He is very strong.", mk: "He is very *strong*." },
     { id: 41, emoji: "🔀", ru: "другой · different · Это совсем другое.", en: "That's completely different.", mk: "That's completely *different*." },
   ] },
-  { id: "w_work", name: "Слова: работа и деньги", dir: "w_work/", noimg: true, cards: [
+  { id: "w_work", name: "💼 Слова: работа и деньги", dir: "w_work/", noimg: true, cards: [
     { id: 1, emoji: "💼", ru: "работа · job · Я ищу работу.", en: "I'm looking for a job.", mk: "I'm looking for a *job*." },
     { id: 2, emoji: "🛠️", ru: "работать · work · Я работаю дома.", en: "I work from home.", mk: "I *work* from *home*." },
     { id: 3, emoji: "🏢", ru: "офис · office · Я сейчас в офисе.", en: "I'm in the office now.", mk: "I'm in the *office now*." },
