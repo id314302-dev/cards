@@ -2,9 +2,9 @@
 // Оболочка (index.html, cards.js, manifest) — сеть, но не дольше NET_WAIT мс, потом кэш; так новая версия подтягивается сразу, а офлайн приложение не ждёт.
 importScripts("cards.js");   // даёт список колод DECKS, из него собираем файлы для кэша
 
-const CACHE = "cards-v8";
+const CACHE = "cards-v9";
 const NET_WAIT = 2500;
-const FILES = ["./", "index.html", "cards.js", "manifest.json", "icon-v2-192.png", "icon-v2-512.png",
+const FILES = ["./", "index.html", "cards.js", "manifest.json", "sessions.json", "icon-v2-192.png", "icon-v2-512.png",
   ...DECKS.flatMap(d => d.cards.flatMap(c => [`audio/${d.dir}${c.id}.mp3`, `audio-uk/${d.dir}${c.id}.mp3`, ...(d.noimg ? [] : [`img/${d.dir}${c.id}.jpg`])]))];
 
 // Докачивает недостающие файлы по 6 штук параллельно; отсутствующий на сервере файл (например, нет картинки) остальное не ломает
@@ -23,13 +23,14 @@ self.addEventListener("activate", e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))));
   self.clients.claim();
 });
+// Длинные тренировки (sessions/*.mp3, ~40 МБ) заранее не качаем: они сохраняются в кэш при первом воспроизведении.
 // Страница просит докачать недостающее (если прошлая установка кэша оборвалась на слабой сети)
 let filled = false;
 self.addEventListener("message", e => {
   if (e.data === "precache" && !filled) { filled = true; e.waitUntil(fill()); }
 });
 
-const isAsset = u => /\/(audio|audio-uk|img)\//.test(u.pathname) || /\/icon-/.test(u.pathname);
+const isAsset = u => /\/(audio|audio-uk|img|sessions)\//.test(u.pathname) || /\/icon-/.test(u.pathname);
 const keep = (req, r) => { if (r && r.ok) { const copy = r.clone(); caches.open(CACHE).then(c => c.put(req, copy)); } return r; };
 
 function cacheFirst(req) {

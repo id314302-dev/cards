@@ -43,6 +43,12 @@
   .m { color:#ffd58a; text-decoration:underline; text-underline-offset:4px; text-decoration-thickness:2px; }
   .pz { color:var(--border); opacity:.8; margin:0 .3em; font-weight:400; } .ar { color:var(--head); font-size:.8em; margin:0 .2em; vertical-align:super; }
   .legend { font-size:.72rem; opacity:.6; margin-top:10px; font-weight:400; color:var(--text); line-height:1.4; }
+  #player { position:fixed; inset:0; z-index:11; background:var(--bg); overflow:auto; padding:16px; padding-bottom:calc(16px + env(safe-area-inset-bottom)); display:none; }
+  #player.open { display:block; } #player .wrap { max-width:480px; margin:0 auto; }
+  #player .card { flex:none; min-height:150px; cursor:default; margin-top:4px; }
+  #player .row button { padding:14px 4px; font-size:1.05rem; } #player .row .ok { flex:1.4; font-size:1.3rem; }
+  #player input[type=range] { width:100%; margin:14px 0 2px; accent-color:var(--head); }
+  #player select { flex:1; min-width:0; }
   .hint { opacity:.6; font-size:.85rem; margin-top:8px; }
   .row { flex:none; display:flex; gap:10px; margin-top:12px; }
   button { flex:1; padding:16px; font-size:1.05rem; color:#fff; background:var(--card); border:1px solid var(--border); border-radius:12px; }
@@ -66,7 +72,7 @@
 </style>
 </head>
 <body>
-<div class="top"><h1>Карточки English</h1><div style="display:flex;gap:6px"><button class="small" id="voice" title="Голос озвучки">🔊 UK</button><button class="small" id="open-list">Список</button></div></div>
+<div class="top"><h1>Карточки English</h1><div style="display:flex;gap:6px"><button class="small" id="open-player" title="Плеер: повтори за диктором, дрил голосом">🎧</button><button class="small" id="voice" title="Голос озвучки">🔊 UK</button><button class="small" id="open-list">Список</button></div></div>
 <div class="bar">
   <select id="deck" aria-label="Колода"></select>
   <button class="small" id="m-cards">Карточки</button>
@@ -81,6 +87,18 @@
   <button class="small" id="load">Загрузить прогресс</button>
   <input type="file" id="file" accept=".json" hidden>
 </footer>
+<div id="player"><div class="wrap">
+  <div class="top"><h1 id="ptitle">Плеер</h1><button class="small" id="pclose">Закрыть</button></div>
+  <div class="bar"><select id="pkind" aria-label="Тренировка"></select><button class="small" id="pvoice">🔊 UK</button></div>
+  <div class="card" id="pcard"><div class="cue" id="pnum"></div><div class="ru" id="pru"></div><div class="en" id="pen"></div></div>
+  <input type="range" id="pseek" min="0" max="1000" value="0" aria-label="Положение">
+  <div class="lvl" id="ptime" style="text-align:center;margin:0 0 10px">0:00 / 0:00</div>
+  <div class="row"><button id="pback">⏪ 10</button><button id="pprev">⏮</button><button class="ok" id="pplay">▶</button><button id="pnext">⏭</button><button id="pfwd">10 ⏩</button></div>
+  <div class="row2" style="margin-top:12px"><select id="pspeed" aria-label="Скорость"><option value="0.7">0,7×</option><option value="0.8">0,8×</option><option value="0.9">0,9×</option><option value="1">1×</option><option value="1.1">1,1×</option><option value="1.25">1,25×</option></select>
+    <select id="psleep" aria-label="Таймер сна"><option value="0">Без таймера</option><option value="15">Стоп через 15 мин</option><option value="30">Стоп через 30 мин</option><option value="60">Стоп через 60 мин</option></select>
+    <button id="ptext">👁 Текст</button></div>
+  <div class="hint" id="pstatus" style="text-align:center"></div>
+</div></div>
 <div id="list"><div class="wrap"><div class="top"><h1>Все карточки</h1><button class="small" id="close-list">Закрыть</button></div><div id="items"></div></div></div>
 <script src="cards.js"></script>
 <script>
@@ -402,6 +420,157 @@ function fadeRender() {
   $("#p1").onclick = () => play(c, false);
   $("#p2").onclick = () => play(c, true);
 }
+
+// ---------- Плеер: «Повтори за диктором» и «Дрил голосом» ----------
+// Берёт готовые длинные файлы из sessions/ (их собирает tools/build_sessions.py): паузы записаны внутри файла, поэтому при выключенном экране
+// они не «плывут». Расписание фраз (id карточки, начало, конец) лежит в sessions.json: от него кнопки «⏮ ⏭» и показ текста.
+const PL = "cards-player-v1";
+const pstore = loadJson(PL);   // { kind, speed, texts: { shadow, drill }, pos: { id тренировки: секунды } }
+pstore.pos = pstore.pos || {};
+const KINDS = { "shadow-chain": "Повтори за диктором", "drill-chain": "Дрил голосом: по порядку", "drill-random": "Дрил голосом: вразнобой" };
+const pl = { all: null, s: null, audio: null, idx: -1, sleepAt: 0, tick: 0, saved: 0, token: 0 };
+const skey = s => `${s.kind}-${s.order}`;
+const plSave = () => saveJson(PL, pstore);
+
+async function plSessions() {
+  if (pl.all) return pl.all;
+  try { pl.all = (await (await fetch("sessions.json")).json()).sessions; } catch { pl.all = []; }
+  return pl.all;
+}
+const plMine = () => (pl.all || []).filter(s => s.deck === D.id && s.voice === voice);
+const plPick = (key = pstore.kind) => { const m = plMine(); return m.find(s => skey(s) === key) || m[0] || null; };
+
+function plKinds() {
+  const m = plMine();
+  $("#pkind").innerHTML = m.map(s => `<option value="${skey(s)}">${KINDS[skey(s)] || skey(s)}</option>`).join("");
+  const cur = plPick();
+  if (cur) $("#pkind").value = skey(cur);
+}
+
+async function plOpen() {
+  $("#player").classList.add("open");
+  $("#pvoice").textContent = "🔊 " + voice.toUpperCase();
+  $("#pstatus").textContent = "Загружаю список…";
+  await plSessions();
+  plKinds();
+  const s = plPick();
+  if (!s) { $("#ptitle").textContent = D.name; $("#pstatus").textContent = "Для этой колоды тренировок пока нет. Выберите другую колоду."; $("#pnum").textContent = ""; $("#pru").textContent = ""; $("#pen").innerHTML = ""; return; }
+  plLoad(s);
+}
+
+function plStop() {
+  pl.token++;
+  const a = pl.audio;
+  if (a) { try { a.pause(); if (pl.s) { pstore.pos[pl.s.id] = a.currentTime || 0; plSave(); } } catch {} }
+  pl.audio = null; pl.tick = 0; pl.idx = -1; pl.sleepAt = 0;
+}
+
+async function plLoad(s) {
+  plStop();
+  const token = pl.token;
+  pl.s = s;
+  $("#ptitle").textContent = `${DECKS.find(d => d.id === s.deck).name} · ${voice.toUpperCase()}`;
+  $("#pplay").textContent = "▶";
+  $("#pstatus").textContent = `Загружаю ${(s.bytes / 1e6).toFixed(1)} МБ (один раз, потом работает без интернета)…`;
+  let blob;
+  try {
+    const ac = new AbortController(), t = setTimeout(() => ac.abort(), 90000);
+    const r = await fetch(s.file, { signal: ac.signal });
+    clearTimeout(t);
+    if (!r.ok) throw 0;
+    blob = await r.blob();
+  } catch {
+    if (token === pl.token) $("#pstatus").textContent = "Не удалось загрузить. Подключитесь к интернету один раз: дальше файл сохранится в телефоне.";
+    return;
+  }
+  if (token !== pl.token) return;   // пока грузили, выбрали другое
+  const a = new Audio(URL.createObjectURL(blob));
+  a.preservesPitch = true;
+  a.playbackRate = +pstore.speed || 1;
+  a.ontimeupdate = plTick;
+  a.onplay = () => { pl.tick = 0; $("#pplay").textContent = "⏸"; };
+  a.onpause = () => { pl.tick = 0; $("#pplay").textContent = "▶"; if (pl.s) { pstore.pos[pl.s.id] = a.currentTime || 0; plSave(); } };
+  a.onended = () => { pstore.pos[s.id] = 0; plSave(); a.currentTime = 0; $("#pplay").textContent = "▶"; };
+  a.onloadedmetadata = () => { const p = pstore.pos[s.id]; if (p && p < s.duration - 3) a.currentTime = p; plUpdate(); };
+  pl.audio = a;
+  $("#pspeed").value = String(+pstore.speed || 1);
+  $("#pstatus").textContent = "Нажмите ▶. Можно выключить экран: звук продолжится.";
+  plMedia(s);
+  plUpdate();
+}
+
+const plIndex = t => { const it = pl.s.items; let lo = 0, hi = it.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (it[m][1] <= t + 0.05) lo = m; else hi = m - 1; } return lo; };
+
+// Показывать ли английский текст: настройка отдельно для «Повтори за диктором» и для дрила (в дриле по умолчанию скрыт: фразу надо вспомнить самому)
+const plShowText = s => (pstore.texts || {})[s.kind] ?? s.kind !== "drill";
+
+function plShowCard() {
+  const s = pl.s, c = DECKS.find(d => d.id === s.deck).cards.find(x => x.id === s.items[pl.idx][0]);
+  const show = plShowText(s);
+  $("#pru").textContent = c.ru;
+  $("#pen").innerHTML = show ? (c.mk ? markHtml(c, 0, false) : stressHtml(c)) + (c.ipa ? `<div class="ipa">${c.ipa}</div>` : "") : '<span style="opacity:.5">текст скрыт</span>';
+  $("#ptext").textContent = show ? "👁 Текст" : "🙈 Текст";
+}
+
+function plUpdate() {
+  const a = pl.audio, s = pl.s;
+  if (!a || !s) return;
+  const t = a.currentTime || 0, dur = a.duration || s.duration;
+  const i = plIndex(t);
+  if (i !== pl.idx) { pl.idx = i; plShowCard(); }
+  $("#pnum").textContent = `${i + 1} / ${s.items.length}`;
+  $("#ptime").textContent = `${mmss(t)} / ${mmss(dur)}`;
+  if (!pl.dragging) $("#pseek").value = Math.round(t / dur * 1000);
+}
+
+function plTick() {
+  const a = pl.audio, s = pl.s;
+  if (!a || !s) return;
+  const now = Date.now();
+  if (!a.paused) {
+    // время прослушивания идёт в дневную цель («серия дней»)
+    if (pl.tick) { const k = dayKey(); habit.days[k] = (habit.days[k] || 0) + Math.min(1, (now - pl.tick) / 1000); }
+    pl.tick = now;
+    if (now - pl.saved > 5000) { pl.saved = now; saveJson(HABIT, habit); habitRender(); pstore.pos[s.id] = a.currentTime; plSave(); }
+    if (pl.sleepAt && now >= pl.sleepAt) { a.pause(); pl.sleepAt = 0; $("#psleep").value = "0"; }
+  }
+  plUpdate();
+}
+
+function plStep(d) {
+  const a = pl.audio, s = pl.s; if (!a || !s) return;
+  const it = s.items, t = a.currentTime || 0, i = plIndex(t);
+  let target;
+  if (d < 0) target = t - it[i][1] > 1.5 ? it[i][1] : it[Math.max(0, i - 1)][1];   // «назад»: сначала к началу этой фразы
+  else target = it[Math.min(it.length - 1, i + 1)][1];
+  a.currentTime = target; plUpdate();
+}
+function plSeek(sec) { const a = pl.audio; if (!a) return; a.currentTime = Math.max(0, Math.min((a.duration || pl.s.duration) - 0.5, (a.currentTime || 0) + sec)); plUpdate(); }
+function plMedia(s) {
+  if (!("mediaSession" in navigator)) return;   // кнопки на экране блокировки и в шторке
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({ title: KINDS[skey(s)] || "Тренировка", artist: "Карточки English", album: DECKS.find(d => d.id === s.deck).name, artwork: [{ src: "icon-v2-512.png", sizes: "512x512", type: "image/png" }] });
+    const h = (n, f) => { try { navigator.mediaSession.setActionHandler(n, f); } catch {} };
+    h("play", () => pl.audio && pl.audio.play()); h("pause", () => pl.audio && pl.audio.pause());
+    h("previoustrack", () => plStep(-1)); h("nexttrack", () => plStep(1));
+    h("seekbackward", () => plSeek(-10)); h("seekforward", () => plSeek(10));
+  } catch {}
+}
+
+$("#open-player").onclick = plOpen;
+$("#pclose").onclick = () => { plStop(); $("#player").classList.remove("open"); };
+$("#pplay").onclick = () => { const a = pl.audio; if (a) a.paused ? a.play() : a.pause(); };
+$("#pprev").onclick = () => plStep(-1);
+$("#pnext").onclick = () => plStep(1);
+$("#pback").onclick = () => plSeek(-10);
+$("#pfwd").onclick = () => plSeek(10);
+$("#pseek").oninput = () => { pl.dragging = true; };
+$("#pseek").onchange = () => { const a = pl.audio; pl.dragging = false; if (a) { a.currentTime = $("#pseek").value / 1000 * (a.duration || pl.s.duration); plUpdate(); } };
+$("#pspeed").onchange = () => { pstore.speed = +$("#pspeed").value; plSave(); if (pl.audio) pl.audio.playbackRate = pstore.speed; };
+$("#psleep").onchange = () => { const m = +$("#psleep").value; pl.sleepAt = m ? Date.now() + m * 60000 : 0; };
+$("#ptext").onclick = () => { if (!pl.s) return; pstore.texts = pstore.texts || {}; pstore.texts[pl.s.kind] = !plShowText(pl.s); plSave(); if (pl.audio) plShowCard(); };
+$("#pkind").onchange = () => { pstore.kind = $("#pkind").value; plSave(); const s = plPick(pstore.kind); if (s) plLoad(s); };
+$("#pvoice").onclick = () => { voice = voice === "uk" ? "us" : "uk"; savePrefs(); voiceLabel(); $("#pvoice").textContent = "🔊 " + voice.toUpperCase(); plKinds(); const s = plPick(pstore.kind); if (s) plLoad(s); };
 
 // ---------- Колоды, режимы, список ----------
 
