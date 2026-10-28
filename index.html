@@ -159,12 +159,34 @@ function stats() {
   $("#stats").textContent = `На сегодня: ${dueCards().length} · Выучено: ${learned} из ${D.cards.length}`;
 }
 
+// Практика сверх расписания: «Повторить всё» или «10 самых слабых». Расписание (интервалы) при этом не меняется.
+let practice = null;   // { order: [карточки], pos }
+
+function startPractice(kind) {
+  const rank = c => state[k(c)]?.box ?? -1;   // -1 — карточка ещё не пройдена
+  const pool = kind === "weak" ? D.cards.slice().sort((a, b) => rank(a) - rank(b) || a.id - b.id).slice(0, 10) : D.cards;
+  practice = { order: shuffle(pool), pos: 0 };
+  next();
+}
+
 function next() {
   stats();
+  if (practice && practice.pos < practice.order.length) {
+    $("#stats").textContent = `Практика · расписание не меняется`;
+    current = practice.order[practice.pos];
+    flipped = false;
+    render();
+    return;
+  }
+  practice = null;
   const due = dueCards();
   if (!due.length) {
     current = null;
-    stage.innerHTML = `<div class="done"><h2>На сегодня всё 🎉</h2><p>Возвращайтесь завтра или попробуйте режим «Дрил».</p></div>`;
+    stage.innerHTML = `<div class="done"><h2>На сегодня всё 🎉</h2><p>Новые повторения по расписанию будут позже, но заниматься можно сколько угодно.</p>
+      <div class="row" style="flex-direction:column"><button id="pall">🔁 Повторить всё вразнобой</button><button id="pweak">🎯 10 самых слабых</button></div>
+      <p class="hint">Расписание при этом не сбивается.</p></div>`;
+    $("#pall").onclick = () => startPractice("all");
+    $("#pweak").onclick = () => startPractice("weak");
     return;
   }
   // не показывать одну и ту же карточку подряд, если есть другие
@@ -242,10 +264,17 @@ function extraHtml(c) {
 }
 
 function navHtml() {
-  return `<div class="nav"><button id="prev">←</button><span>${D.cards.indexOf(current) + 1} / ${D.cards.length}</span><button id="next">→</button></div>`;
+  const label = practice ? `${practice.pos + 1} / ${practice.order.length} · практика` : `${D.cards.indexOf(current) + 1} / ${D.cards.length}`;
+  return `<div class="nav"><button id="prev">←</button><span>${label}</span><button id="next">→</button></div>`;
 }
 
 function go(d) {
+  if (practice) {
+    const n = practice.order.length;
+    practice.pos = (practice.pos + d + n) % n;
+    current = practice.order[practice.pos]; flipped = false; render();
+    return;
+  }
   const i = D.cards.indexOf(current);
   current = D.cards[(i + d + D.cards.length) % D.cards.length];
   flipped = false;
@@ -253,6 +282,7 @@ function go(d) {
 }
 
 function answer(known) {
+  if (practice) { practice.pos++; next(); return; }   // в практике расписание не трогаем
   const s = state[k(current)] || { box: 0, due: 0 };
   s.box = known ? Math.min(s.box + 1, INTERVALS.length - 1) : 0;
   // «не знал» вернётся в этой же сессии: due = сейчас, но не подряд
@@ -385,6 +415,7 @@ function updateBar() {
 }
 
 function refresh(first) {
+  practice = null;
   if (mode === "fade" && !D.fade) mode = "cards";   // «Тает» — только для колод-скриптов
   savePrefs();
   updateBar();
@@ -419,7 +450,7 @@ $("#items").onclick = e => {
   $("#list").classList.remove("open");
   if (mode === "fade") { fadeStart(D.cards.indexOf(c)); return; }
   if (mode === "drill") { drillStart("chain", D.cards.indexOf(c)); return; }
-  current = c; flipped = false; render();
+  practice = null; current = c; flipped = false; render();
 };
 
 // ---------- Звук ----------
