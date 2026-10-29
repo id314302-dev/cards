@@ -2,7 +2,7 @@
 // Оболочка (index.html, cards.js, manifest) — сеть, но не дольше NET_WAIT мс, потом кэш; так новая версия подтягивается сразу, а офлайн приложение не ждёт.
 importScripts("cards.js");   // даёт список колод DECKS, из него собираем файлы для кэша
 
-const CACHE = "cards-v21";   // префикс «cards-»: на этом же адресе живёт ещё приложение со своим кэшем, чужие кэши не трогаем
+const CACHE = "cards-v22";   // префикс «cards-»: на этом же адресе живёт ещё приложение со своим кэшем, чужие кэши не трогаем
 const NET_WAIT = 2500;
 const FILES = ["./", "index.html", "cards.js", "manifest.json", "sessions.json", "icon-v2-192.png", "icon-v2-512.png",
   ...DECKS.flatMap(d => d.cards.flatMap(c => [`audio/${d.dir}${c.id}.mp3`, `audio-uk/${d.dir}${c.id}.mp3`, ...(d.noimg ? [] : [`img/${d.dir}${c.id}.jpg`])]))];
