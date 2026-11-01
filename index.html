@@ -79,6 +79,7 @@
   <button class="small" id="m-cards">Карточки</button>
   <button class="small" id="m-drill">Дрил</button>
   <button class="small" id="m-fade">Тает</button>
+  <button class="small" id="m-role">Роли</button>
 </div>
 <div class="habit" id="habit" title="Нажмите, чтобы сменить дневную цель"><span id="streak"></span><div class="meter" id="meter"><i id="fill"></i></div><span id="today"></span></div>
 <div id="stats"></div>
@@ -154,7 +155,7 @@ $("#habit").onclick = () => { const g = [2, 3, 5, 10]; habit.goal = g[(g.indexOf
 
 const stage = $("#stage");
 let D = DECKS.find(d => d.id === prefs.deck) || DECKS[0];   // текущая колода
-let mode = ["drill", "fade"].includes(prefs.mode) ? prefs.mode : "cards";
+let mode = ["drill", "fade", "role"].includes(prefs.mode) ? prefs.mode : "cards";
 let voice = prefs.voice === "us" ? "us" : "uk";   // голос озвучки: uk — британский (Johnny Kid), us — американский (Jon Catalyst)
 let level = Math.min(4, Math.max(0, +prefs.level || 0));   // «Тает»: 0 — весь текст … 4 — только подсказка
 let current = null, flipped = false;
@@ -573,6 +574,75 @@ $("#ptext").onclick = () => { if (!pl.s) return; pstore.texts = pstore.texts || 
 $("#pkind").onchange = () => { pstore.kind = $("#pkind").value; plSave(); const s = plPick(pstore.kind); if (s) plLoad(s); };
 $("#pvoice").onclick = () => { voice = voice === "uk" ? "us" : "uk"; savePrefs(); voiceLabel(); $("#pvoice").textContent = "🔊 " + voice.toUpperCase(); plKinds(); const s = plPick(pstore.kind); if (s) plLoad(s); };
 
+// ---------- Режим «Роли»: диалог из колоды с roles: true. Реплики собеседника звучат, свои вы говорите вслух по-русской подсказке ----------
+const role = { who: "Б", dlg: [], di: 0, li: 0, shown: false, all: [] };
+
+function roleParse() {
+  const m = new Map();
+  for (const c of D.cards) {
+    const r = /^диалог (\d+) · ([АБ]): (.*)$/.exec(c.ru);
+    if (!r) continue;
+    if (!m.has(r[1])) m.set(r[1], []);
+    m.get(r[1]).push({ c, who: r[2], ru: r[3] });
+  }
+  return [...m.entries()].map(([n, lines]) => ({ n, lines }));
+}
+
+function roleStart(di = 0) {
+  role.all = roleParse(); role.di = Math.max(0, Math.min(role.all.length - 1, di)); role.li = 0; role.shown = false;
+  roleRender(true);
+}
+
+function roleRender(autoplay) {
+  const d = role.all[role.di];
+  if (!d) { stage.innerHTML = `<div class="done"><p>В этой колоде нет диалогов.</p></div>`; return; }
+  $("#stats").textContent = `Роли · вы — ${role.who}`;
+  const head = `<div class="nav"><button id="rprev">←</button><span>Диалог ${role.di + 1} / ${role.all.length}</span><button id="rnext">→</button></div>
+    <div class="row2"><button id="rwho">Я — ${role.who} (сменить)</button><button id="ragain">↺ Сначала</button></div>`;
+  const wire = () => {
+    $("#rprev").onclick = () => roleStart(role.di - 1);
+    $("#rnext").onclick = () => roleStart(role.di + 1);
+    $("#rwho").onclick = () => { role.who = role.who === "А" ? "Б" : "А"; roleStart(role.di); };
+    $("#ragain").onclick = () => roleStart(role.di);
+  };
+  if (role.li >= d.lines.length) {
+    const last = role.di >= role.all.length - 1;
+    stage.innerHTML = head + `<div class="card"><div class="listen">🎉</div><div class="ru">Диалог пройден</div></div>
+      <div class="row"><button class="ok" id="rgo">${last ? "С первого диалога" : "Следующий диалог →"}</button></div>`;
+    wire(); $("#rgo").onclick = () => roleStart(last ? 0 : role.di + 1);
+    return;
+  }
+  const L = d.lines[role.li], mine = L.who === role.who;
+  const done = d.lines.slice(0, role.li).map(x => `<div class="hint">${x.who}: ${x.c.en}</div>`).join("");
+  const sub = `${role.li + 1} / ${d.lines.length}`;
+  if (!mine) {
+    stage.innerHTML = head + `<div class="card" id="card">${done}<div class="hint">${L.who} говорит · ${sub}</div>
+      <div class="en${L.c.en.length > 90 ? " long" : ""}">${L.c.en}</div><div class="ru">${L.ru}</div>
+      <div class="snd"><button class="small" id="p1">🔊 Ещё раз</button><button class="small" id="p2">🐢 Медленно</button></div></div>
+      <div class="row"><button class="ok" id="rok">Дальше →</button></div>`;
+    $("#card").onclick = () => play(L.c, false);
+    $("#p1").onclick = e => { e.stopPropagation(); play(L.c, false); };
+    $("#p2").onclick = e => { e.stopPropagation(); play(L.c, true); };
+    $("#rok").onclick = () => { role.li++; role.shown = false; roleRender(true); };
+    if (autoplay) play(L.c, false);
+  } else if (!role.shown) {
+    stage.innerHTML = head + `<div class="card" id="card">${done}<div class="hint">Ваша реплика · ${sub}</div>
+      <div class="ru">${L.ru}</div><div class="hint">Скажите вслух по-английски, потом проверьте</div></div>
+      <div class="row"><button class="ok" id="rshow">Проверить</button></div>`;
+    $("#rshow").onclick = () => { role.shown = true; roleRender(false); play(L.c, false); };
+  } else {
+    stage.innerHTML = head + `<div class="card" id="card">${done}<div class="hint">Ваша реплика · ${sub}</div>
+      <div class="ru">${L.ru}</div><div class="en${L.c.en.length > 90 ? " long" : ""}">${stressHtml(L.c)}</div>
+      <div class="snd"><button class="small" id="p1">🔊 Ещё раз</button><button class="small" id="p2">🐢 Медленно</button></div></div>
+      <div class="row"><button class="ok" id="rok">Дальше →</button></div>`;
+    $("#card").onclick = () => play(L.c, false);
+    $("#p1").onclick = e => { e.stopPropagation(); play(L.c, false); };
+    $("#p2").onclick = e => { e.stopPropagation(); play(L.c, true); };
+    $("#rok").onclick = () => { role.li++; role.shown = false; roleRender(true); };
+  }
+  wire();
+}
+
 // ---------- Колоды, режимы, список ----------
 
 function updateBar() {
@@ -582,14 +652,18 @@ function updateBar() {
   $("#m-drill").classList.toggle("on", mode === "drill");
   $("#m-fade").classList.toggle("on", mode === "fade");
   $("#m-fade").style.display = D.fade ? "" : "none";
+  $("#m-role").classList.toggle("on", mode === "role");
+  $("#m-role").style.display = D.roles ? "" : "none";
 }
 
 function refresh(first) {
   practice = null;
   if (mode === "fade" && !D.fade) mode = "cards";   // «Тает» — только для колод-скриптов
+  if (mode === "role" && !D.roles) mode = "cards";
   savePrefs();
   updateBar();
   if (mode === "fade") fadeStart(0);
+  else if (mode === "role") roleStart(0);
   else if (mode === "drill") drillStart("chain");
   else { current = null; next(); }
 }
@@ -598,6 +672,7 @@ $("#deck").onchange = e => { D = DECKS.find(d => d.id === e.target.value); refre
 $("#m-cards").onclick = () => { mode = "cards"; refresh(); };
 $("#m-drill").onclick = () => { mode = "drill"; refresh(); };
 $("#m-fade").onclick = () => { mode = "fade"; refresh(); };
+$("#m-role").onclick = () => { mode = "role"; refresh(); };
 
 function openList() {
   const now = Date.now();
@@ -619,6 +694,7 @@ $("#items").onclick = e => {
   const c = D.cards.find(x => x.id === +it.dataset.id);
   $("#list").classList.remove("open");
   if (mode === "fade") { fadeStart(D.cards.indexOf(c)); return; }
+  if (mode === "role") { const i = role.all.findIndex(d => d.lines.some(l => l.c === c)); roleStart(i < 0 ? 0 : i); return; }
   if (mode === "drill") { drillStart("chain", D.cards.indexOf(c)); return; }
   practice = null; current = c; flipped = false; render();
 };

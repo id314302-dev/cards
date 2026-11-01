@@ -1253,7 +1253,7 @@ const DECKS = [
     { id: 72, emoji: "🎙️", ru: "вопрос дня (голосовое на минуту) · Где вы сегодня были?", en: "Where were you today?", mk: "*Where* were you *today*? ↘" },
     { id: 73, emoji: "🎙️", ru: "вопрос дня (голосовое на минуту) · Что вы сегодня видели?", en: "What did you see today?", mk: "What did you *see* *today*? ↘" },
   ] },
-  { id: "coffee", name: "☕ Диалоги за кофе", dir: "coffee/", noimg: true, cards: [
+  { id: "coffee", name: "☕ Диалоги за кофе", dir: "coffee/", noimg: true, roles: true, cards: [
     { id: 1, emoji: "👋", ru: "диалог 1 · А: Привет! Как дела?", en: "Hi! How are you?", mk: "*Hi*! *How* are you? ↘" },
     { id: 2, emoji: "👋", ru: "диалог 1 · Б: Привет! Хорошо. А у тебя?", en: "Hi! I'm good. How about you?", mk: "*Hi*! I'm good. How *about* you? ↘" },
     { id: 3, emoji: "👋", ru: "диалог 1 · А: У меня тоже хорошо.", en: "I'm good too.", mk: "I'm *good* too." },
