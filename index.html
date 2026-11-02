@@ -755,7 +755,9 @@ $("#file").onchange = async e => {
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
   // при каждом запуске просим докачать то, чего не хватает в кэше (если прошлая загрузка оборвалась)
-  navigator.serviceWorker.ready.then(r => r.active && r.active.postMessage("precache")).catch(() => {});
+  const precache = () => navigator.serviceWorker.ready.then(r => r.active && r.active.postMessage("precache")).catch(() => {});
+  precache();
+  addEventListener("online", precache);   // появилась связь — докачать то, что не успело
 }
 voiceLabel();
 habitRender();
